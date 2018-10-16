@@ -330,28 +330,26 @@ import _ "runtime/cgo"
 import "sync"
 import "fmt"
 
-
 type _ unsafe.Pointer
-
-
 
 var Swig_escape_always_false bool
 var Swig_escape_val interface{}
 
-
 type _swig_fnptr *byte
 type _swig_memberptr *byte
 
-
 type _ sync.Mutex
 
+type swig_gostring struct {
+	p uintptr
+	n int
+}
 
-type swig_gostring struct { p uintptr; n int }
 func swigCopyString(s string) string {
-  p := *(*swig_gostring)(unsafe.Pointer(&s))
-  r := string((*[0x7fffffff]byte)(unsafe.Pointer(p.p))[:p.n])
-  Swig_free(p.p)
-  return r
+	p := *(*swig_gostring)(unsafe.Pointer(&s))
+	r := string((*[0x7fffffff]byte)(unsafe.Pointer(p.p))[:p.n])
+	Swig_free(p.p)
+	return r
 }
 
 func Swig_free(arg1 uintptr) {
@@ -376,7 +374,9 @@ func ModifiedSGP4(arg1 Elsetrec, arg2 float64, arg3 []float64, arg4 []float64) (
 }
 
 const SGP4Version string = "SGP4 Version 2016-03-09"
+
 type Gravconsttype int
+
 func _swig_getwgs72old() (_swig_ret int) {
 	var swig_r int
 	swig_r = (int)(C._wrap_wgs72old_sgp_8b5016feffcb84af())
@@ -384,6 +384,7 @@ func _swig_getwgs72old() (_swig_ret int) {
 }
 
 var Wgs72old int = _swig_getwgs72old()
+
 func _swig_getwgs72() (_swig_ret int) {
 	var swig_r int
 	swig_r = (int)(C._wrap_wgs72_sgp_8b5016feffcb84af())
@@ -391,6 +392,7 @@ func _swig_getwgs72() (_swig_ret int) {
 }
 
 var Wgs72 int = _swig_getwgs72()
+
 func _swig_getwgs84() (_swig_ret int) {
 	var swig_r int
 	swig_r = (int)(C._wrap_wgs84_sgp_8b5016feffcb84af())
@@ -398,6 +400,7 @@ func _swig_getwgs84() (_swig_ret int) {
 }
 
 var Wgs84 int = _swig_getwgs84()
+
 type SwigcptrElsetrec uintptr
 
 func (p SwigcptrElsetrec) Swigcptr() uintptr {
@@ -1800,7 +1803,7 @@ func (arg1 SwigcptrElsetrec) GetDesignation() (_swig_ret string) {
 	swig_r_p := C._wrap_elsetrec_designation_get_sgp_8b5016feffcb84af(C.uintptr_t(_swig_i_0))
 	swig_r = *(*string)(unsafe.Pointer(&swig_r_p))
 	var swig_r_1 string
- swig_r_1 = swigCopyString(swig_r) 
+	swig_r_1 = swigCopyString(swig_r)
 	return swig_r_1
 }
 
@@ -2524,30 +2527,27 @@ func Invjday(arg1 float64, arg2 float64, arg3 *int, arg4 *int, arg5 *int, arg6 *
 	C._wrap_invjday_sgp_8b5016feffcb84af(C.double(_swig_i_0), C.double(_swig_i_1), C.swig_voidp(_swig_i_2), C.swig_voidp(_swig_i_3), C.swig_voidp(_swig_i_4), C.swig_voidp(_swig_i_5), C.swig_voidp(_swig_i_6), C.swig_voidp(_swig_i_7))
 }
 
-
 func SGP4(els Elsetrec, since float64) ([]float64, []float64, error) {
-  ps := []float64{0.0, 0.0, 0.0}
-  vs := []float64{0.0, 0.0, 0.0}
+	ps := []float64{0.0, 0.0, 0.0}
+	vs := []float64{0.0, 0.0, 0.0}
 
-  ModifiedSGP4(els, since, ps, vs)
-  switch els.GetError() {
-  case 0:
-  case 1:
-    return nil, nil, fmt.Errorf("mean elements, ecc >= 1.0 or ecc < -0.001 or a < 0.95")
-  case 2:
-    return nil, nil, fmt.Errorf("mean motion less than 0.0")
-  case 3:
-    return nil, nil, fmt.Errorf("pert elements, ecc < 0.0  or  ecc > 1.0")
-  case 4:
-    return nil, nil, fmt.Errorf("semi-latus rectum < 0.0")
-  case 5:
-    return nil, nil, fmt.Errorf("epoch elements are sub-orbital")
-  case 6:
-    return nil, nil, fmt.Errorf("satellite has decayed")
-  default:
-    return nil, nil, fmt.Errorf("unrecognized error")
-  }
-  return ps, vs, nil
+	ModifiedSGP4(els, since, ps, vs)
+	switch els.GetError() {
+	case 0:
+	case 1:
+		return nil, nil, fmt.Errorf("mean elements, ecc >= 1.0 or ecc < -0.001 or a < 0.95")
+	case 2:
+		return nil, nil, fmt.Errorf("mean motion less than 0.0")
+	case 3:
+		return nil, nil, fmt.Errorf("pert elements, ecc < 0.0  or  ecc > 1.0")
+	case 4:
+		return nil, nil, fmt.Errorf("semi-latus rectum < 0.0")
+	case 5:
+		return nil, nil, fmt.Errorf("epoch elements are sub-orbital")
+	case 6:
+		return nil, nil, fmt.Errorf("satellite has decayed")
+	default:
+		return nil, nil, fmt.Errorf("unrecognized error")
+	}
+	return ps, vs, nil
 }
-
-

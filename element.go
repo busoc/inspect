@@ -29,7 +29,7 @@ type Point struct {
 }
 
 type Shape interface {
-	Contains(x, y float64) bool
+	Contains(p Point) bool
 }
 
 type Element struct {
@@ -100,9 +100,9 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 		ws []time.Time
 		es [][]float64
 	)
-  delta := s.Seconds()/time.Minute.Seconds()
-  var when float64
-  for elapsed := time.Duration(0); elapsed < p; elapsed += s {
+	delta := s.Seconds() / time.Minute.Seconds()
+	var when float64
+	for elapsed := time.Duration(0); elapsed < p; elapsed += s {
 		jd := els.GetJdsatepoch() + (when / minPerDays)
 		jdf := els.GetJdsatepochF()
 
@@ -127,15 +127,14 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 			Lon:  lon,
 			Alt:  alt,
 			When: w,
-			Saa:  (lat > SAALatMin && lat < SAALatMax) && (lon > SAALonMin && lon < SAALonMax),
 		}
 		if saa != nil {
-			t.Saa = saa.Contains(t.Lat, t.Lon)
+			t.Saa = saa.Contains(t)
 		}
 		ts = append(ts, &t)
 		ws = append(ws, w)
 
-    when += delta
+		when += delta
 	}
 	fes, pes := eclipseStatus(es, ws)
 	for i := 0; i < len(ts); i++ {

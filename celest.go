@@ -4,13 +4,14 @@ import (
 	"crypto/md5"
 	"encoding/csv"
 	"flag"
+	"fmt"
 	"io"
 	"log"
-	"os"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 )
 
 const (
@@ -38,8 +39,45 @@ const (
 	BuildTime = "2018-10-16 11:10:00"
 )
 
+type rect struct {
+	North float64
+	South float64
+	West  float64
+	East  float64
+}
+
+func (r *rect) Contains(p Point) bool {
+	if !r.isDefined() {
+		return false
+	}
+	return (p.Lat > r.South && p.Lat < r.North) && (p.Lon > r.West && p.Lon < r.East)
+}
+
+func (r *rect) isDefined() bool {
+	return r.North == 0 && r.South == 0 && r.West == 0 && r.East == 0
+}
+
+func (r *rect) Set(s string) error {
+	if r == nil {
+		r = new(rect)
+	}
+	_, err := fmt.Sscanf(s, "%f:%f:%f:%f", &r.North, &r.East, &r.South, &r.West)
+	return err
+}
+
+func (r *rect) String() string {
+	return fmt.Sprintf("rect(%.2fN,%.2fE,%.2fS,%.2fW)", r.North, r.East, r.South, r.West)
+}
+
 func main() {
-	format := flag.String("f", "", "output format")
+	saa := rect{
+		North: SAALatMax,
+		South: SAALatMin,
+		East:  SAALonMax,
+		West:  SAALonMin,
+	}
+	flag.Var(&saa, "r", "saa area")
+	format := flag.String("f", "pipe", "output format")
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
 	interval := flag.Duration("i", time.Minute, "time interval")
@@ -82,7 +120,7 @@ func main() {
 		}
 	}
 
-	ps, err := t.Predict(*period, *interval)
+	ps, err := t.Predict(*period, *interval, &saa)
 	// log.Printf("trajectory: %d positions", len(ps))
 	if err != nil {
 		log.Fatalln(err)

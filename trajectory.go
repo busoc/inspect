@@ -83,7 +83,7 @@ func (t *Trajectory) Scan(r io.Reader, sid int) error {
 	return s.Err()
 }
 
-func (t *Trajectory) Predict(p, s time.Duration) ([]*Point, error) {
+func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 	var rs []*Point
 	for i := 0; i < len(t.elements); i++ {
 		curr := t.elements[i]
@@ -91,7 +91,7 @@ func (t *Trajectory) Predict(p, s time.Duration) ([]*Point, error) {
 		if j := i + 1; j < len(t.elements) {
 
 		}
-		ps, err := curr.Predict(period, s, nil)
+		ps, err := curr.Predict(period, s, saa)
 		if err != nil {
 			return nil, err
 		}
