@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sort"
 	"time"
 )
 
@@ -46,6 +47,24 @@ func Open(files []string, id int) (*Trajectory, error) {
 	return &t, nil
 }
 
+func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
+	var rs []*Point
+	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].JD < t.elements[j].JD })
+	for i := 0; i < len(t.elements); i++ {
+		curr := t.elements[i]
+		period := p
+		if j := i + 1; j < len(t.elements) {
+
+		}
+		ps, err := curr.Predict(period, s, saa)
+		if err != nil {
+			return nil, err
+		}
+		rs = append(rs, ps...)
+	}
+	return rs, nil
+}
+
 func (t *Trajectory) Scan(r io.Reader, sid int) error {
 	s := bufio.NewScanner(r)
 	for {
@@ -81,21 +100,4 @@ func (t *Trajectory) Scan(r io.Reader, sid int) error {
 		}
 	}
 	return s.Err()
-}
-
-func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
-	var rs []*Point
-	for i := 0; i < len(t.elements); i++ {
-		curr := t.elements[i]
-		period := p
-		if j := i + 1; j < len(t.elements) {
-
-		}
-		ps, err := curr.Predict(period, s, saa)
-		if err != nil {
-			return nil, err
-		}
-		rs = append(rs, ps...)
-	}
-	return rs, nil
 }

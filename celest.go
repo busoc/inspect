@@ -34,7 +34,7 @@ const (
 const DefaultSid = 25544
 
 const (
-	Name      = "inspect"
+	Program   = "inspect"
 	Version   = "0.0.1"
 	BuildTime = "2018-10-16 11:10:00"
 )
@@ -69,6 +69,10 @@ func (r *rect) String() string {
 	return fmt.Sprintf("rect(%.2fN,%.2fE,%.2fS,%.2fW)", r.North, r.East, r.South, r.West)
 }
 
+func init() {
+	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
+}
+
 func main() {
 	saa := rect{
 		North: SAALatMax,
@@ -81,6 +85,7 @@ func main() {
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
 	interval := flag.Duration("i", time.Minute, "time interval")
+	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
 	flag.Parse()
 
 	var write func(io.Writer, []*Point) error
@@ -121,11 +126,18 @@ func main() {
 	}
 
 	ps, err := t.Predict(*period, *interval, &saa)
-	// log.Printf("trajectory: %d positions", len(ps))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := write(os.Stdout, ps); err != nil {
+	var w io.Writer = os.Stdout
+	switch f, err := os.Create(*file); {
+	case err == nil:
+		defer f.Close()
+		w = f
+	case err != nil && *file != "":
+		log.Fatalln(err)
+	}
+	if err := write(w, ps); err != nil {
 		log.Fatalln(err)
 	}
 }
@@ -133,7 +145,7 @@ func main() {
 func writeCSV(w io.Writer, ps []*Point) error {
 	ws := csv.NewWriter(w)
 	for _, p := range ps {
-		jd, _, _ := mjdTime(p.When)
+		_ ,jd, _ := mjdTime(p.When)
 		var saa, eclipse int
 		if p.Saa {
 			saa++
