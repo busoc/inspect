@@ -1,0 +1,219 @@
+package main
+
+import (
+	"fmt"
+	"math"
+	"time"
+
+	"github.com/busoc/celest/sgp"
+)
+
+const (
+	row1 = "%1d %5d%1s %8s %2d%12f %10f %6f%2d %6f%2d %1d %5s"
+	row2 = "%d %5d %8f %8f %7f %8f %8f %11f%5d%1s"
+)
+
+type Point struct {
+	When  time.Time
+	Epoch float64
+
+	// Satellite position
+	Lat float64
+	Lon float64
+	Alt float64
+
+	// SAA and Eclipse crossing
+	Saa     bool
+	Partial bool
+	Total   bool
+}
+
+type Shape interface {
+	Contains(x, y float64) bool
+}
+
+type Element struct {
+	Sid int
+	JD  float64
+	JDF float64
+
+	//Elements of row#1
+	Year      int
+	Doy       float64
+	Mean1     float64
+	Mean2     float64
+	BStar     float64
+	Ephemeris int
+
+	//Elements of row#2
+	Inclination  float64
+	Ascension    float64
+	Excentricity float64
+	Perigee      float64
+	Anomaly      float64
+	Motion       float64
+	Revolution   int
+}
+
+func NewElement(row1, row2 string) (*Element, error) {
+	var e Element
+	if len(row1) != tleLen || len(row2) != tleLen {
+		return nil, InvalidLenError(len(row1))
+	}
+	if err := scanLine1(row1, &e); err != nil {
+		return nil, err
+	}
+	if err := scanLine2(row2, &e); err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
+	els := sgp.NewElsetrec()
+	defer sgp.DeleteElsetrec(els)
+
+	els.SetNumber(int64(e.Sid))
+	els.SetYear(e.Year)
+	els.SetDays(e.Doy)
+	els.SetBstar(e.BStar)
+	els.SetMean1(e.Mean1)
+	els.SetMean2(e.Mean2)
+	els.SetEphemeris(e.Ephemeris)
+
+	els.SetJdsatepoch(e.JD)
+	els.SetJdsatepochF(e.JDF)
+
+	els.SetExcentricity(e.Excentricity)
+	els.SetPerigee(e.Perigee)
+	els.SetInclination(e.Inclination)
+	els.SetAnomaly(e.Anomaly)
+	els.SetMotion(e.Motion)
+	els.SetAscension(e.Ascension)
+
+	wg84 := sgp.Gravconsttype(sgp.Wgs84)
+	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), els.GetJdsatepoch()-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
+		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
+	}
+	var (
+		ts []*Point
+		ws []time.Time
+		es [][]float64
+	)
+  delta := s.Seconds()/time.Minute.Seconds()
+  var when float64
+  for elapsed := time.Duration(0); elapsed < p; elapsed += s {
+		jd := els.GetJdsatepoch() + (when / minPerDays)
+		jdf := els.GetJdsatepochF()
+
+		ps, _, err := sgp.SGP4(els, when)
+		if err != nil {
+			return nil, err
+		}
+		var (
+			year, month, day, hour, min int
+			seconds                     float64
+		)
+		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
+		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
+
+		lat, lon, alt := Convert(w, ps)
+		for i := range ps {
+			ps[i] *= 1000
+		}
+		es = append(es, ps)
+		t := Point{
+			Lat:  lat,
+			Lon:  lon,
+			Alt:  alt,
+			When: w,
+			Saa:  (lat > SAALatMin && lat < SAALatMax) && (lon > SAALonMin && lon < SAALonMax),
+		}
+		if saa != nil {
+			t.Saa = saa.Contains(t.Lat, t.Lon)
+		}
+		ts = append(ts, &t)
+		ws = append(ws, w)
+
+    when += delta
+	}
+	fes, pes := eclipseStatus(es, ws)
+	for i := 0; i < len(ts); i++ {
+		ts[i].Total = fes[i]
+		ts[i].Partial = pes[i]
+	}
+	return ts, nil
+}
+
+func scanLine1(r string, e *Element) error {
+	r1 := struct {
+		Line      int
+		Satellite int
+		Class     string
+		Label     string
+		Year      int
+		Doy       float64
+		Mean1     float64
+		Mean2     float64
+		Mean2Exp  int
+		BStar     float64
+		BStarExp  int
+		Ephemeris int
+		Control   string
+	}{}
+	if _, err := fmt.Sscanf(r, row1, &r1.Line, &r1.Satellite, &r1.Class, &r1.Label, &r1.Year, &r1.Doy, &r1.Mean1, &r1.Mean2, &r1.Mean2Exp, &r1.BStar, &r1.BStarExp, &r1.Ephemeris, &r1.Control); err != nil || r1.Line != 1 {
+		return fmt.Errorf("fail to scan row#1: %s", err)
+	}
+	mean1 := r1.Mean1 / (xpdotp * minPerDays)
+	mean2 := ((r1.Mean2 / 100000) * math.Pow10(r1.Mean2Exp)) / (xpdotp * minPerDays * minPerDays)
+	bstar := (r1.BStar / 100000) * math.Pow10(r1.BStarExp)
+
+	e.Sid = r1.Satellite
+	e.Year = r1.Year
+	e.Doy = r1.Doy
+	e.Mean1 = mean1
+	e.Mean2 = mean2
+	e.BStar = bstar
+	e.Ephemeris = r1.Ephemeris
+
+	var (
+		month, day, hour, min int
+		seconds               float64
+	)
+	if r1.Year < YPivot {
+		r1.Year += Y2000
+	} else {
+		r1.Year += Y1900
+	}
+	sgp.Days2mdhms(r1.Year, r1.Doy, &month, &day, &hour, &min, &seconds)
+	sgp.Jday(r1.Year, month, day, hour, min, seconds, &e.JD, &e.JDF)
+
+	return nil
+}
+
+func scanLine2(r string, e *Element) error {
+	r2 := struct {
+		Line         int
+		Satellite    int
+		Inclination  float64
+		Ascension    float64
+		Excentricity float64
+		Perigee      float64
+		Anomaly      float64
+		Motion       float64
+		Revolution   int
+		Control      string
+	}{}
+
+	if _, err := fmt.Sscanf(r, row2, &r2.Line, &r2.Satellite, &r2.Inclination, &r2.Ascension, &r2.Excentricity, &r2.Perigee, &r2.Anomaly, &r2.Motion, &r2.Revolution, &r2.Control); err != nil || r2.Line != 2 {
+		return fmt.Errorf("fail to scan row#2: %s", err)
+	}
+	e.Inclination = r2.Inclination * deg2rad
+	e.Ascension = r2.Ascension * deg2rad
+	e.Excentricity = r2.Excentricity / 1000000
+	e.Perigee = r2.Perigee * deg2rad
+	e.Anomaly = r2.Anomaly * deg2rad
+	e.Motion = r2.Motion / xpdotp
+
+	return nil
+}
