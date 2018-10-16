@@ -34,6 +34,7 @@ type Shape interface {
 
 type Element struct {
 	Sid int
+	When time.Time
 	JD  float64
 	JDF float64
 
@@ -186,6 +187,8 @@ func scanLine1(r string, e *Element) error {
 	}
 	sgp.Days2mdhms(r1.Year, r1.Doy, &month, &day, &hour, &min, &seconds)
 	sgp.Jday(r1.Year, month, day, hour, min, seconds, &e.JD, &e.JDF)
+
+	e.When = time.Date(r1.Year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
 
 	return nil
 }

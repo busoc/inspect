@@ -48,13 +48,18 @@ func Open(files []string, id int) (*Trajectory, error) {
 }
 
 func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
+	if p < s {
+		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
+	}
 	var rs []*Point
-	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].JD < t.elements[j].JD })
+	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
 	for i := 0; i < len(t.elements); i++ {
 		curr := t.elements[i]
 		period := p
 		if j := i + 1; j < len(t.elements) {
-
+			diff := t.elements[j].When.Sub(curr.When)
+			period = diff
+			p -= diff
 		}
 		ps, err := curr.Predict(period, s, saa)
 		if err != nil {

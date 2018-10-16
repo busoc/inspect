@@ -66,7 +66,7 @@ func (r *rect) Set(s string) error {
 }
 
 func (r *rect) String() string {
-	return fmt.Sprintf("rect(%.2fN,%.2fE,%.2fS,%.2fW)", r.North, r.East, r.South, r.West)
+	return fmt.Sprintf("rect(%.2fN:%.2fE:%.2fS:%.2fW)", r.North, r.East, r.South, r.West)
 }
 
 func init() {
@@ -172,7 +172,7 @@ func writeCSV(w io.Writer, ps []*Point) error {
 }
 
 func writePipe(w io.Writer, ps []*Point) error {
-	const row = "%s | %.2f | %18.5f | %18.5f | %18.5f | %d | %d"
+	const row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
 	logger := log.New(w, "", 0)
 	for _, p := range ps {
 		var saa, eclipse int
