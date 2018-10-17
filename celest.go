@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -81,6 +82,7 @@ func main() {
 		West:  SAALonMin,
 	}
 	flag.Var(&saa, "r", "saa area")
+	copydir := flag.String("t", os.TempDir(), "temp dir")
 	format := flag.String("f", "pipe", "output format")
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
@@ -104,7 +106,16 @@ func main() {
 		if resp.StatusCode != http.StatusOK {
 			log.Fatalf("fail to fetch data from %s (%s)", flag.Arg(0), resp.Status)
 		}
-		if err := t.Scan(io.TeeReader(resp.Body, digest), *sid); err != nil {
+		var w io.Writer = digest
+		suffix := "-" + time.Now().Format("20060102_150405")
+		if err := os.MkdirAll(*copydir, 0755); err != nil && !os.IsExist(err) {
+			log.Fatalln(err)
+		}
+		if f, err := os.Create(path.Join(*copydir, path.Base(flag.Arg(0)+suffix))); err == nil {
+			defer f.Close()
+			w = io.MultiWriter(f, w)
+		}
+		if err := t.Scan(io.TeeReader(resp.Body, w), *sid); err != nil {
 			log.Fatalln(err)
 		}
 		log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", flag.Arg(0), digest.Sum(nil), resp.Header.Get("last-modified"))
@@ -145,7 +156,7 @@ func main() {
 func writeCSV(w io.Writer, ps []*Point) error {
 	ws := csv.NewWriter(w)
 	for _, p := range ps {
-		_ ,jd, _ := mjdTime(p.When)
+		_, jd, _ := mjdTime(p.When)
 		var saa, eclipse int
 		if p.Saa {
 			saa++

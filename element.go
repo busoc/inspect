@@ -33,10 +33,10 @@ type Shape interface {
 }
 
 type Element struct {
-	Sid int
+	Sid  int
 	When time.Time
-	JD  float64
-	JDF float64
+	JD   float64
+	JDF  float64
 
 	//Elements of row#1
 	Year      int
@@ -58,8 +58,11 @@ type Element struct {
 
 func NewElement(row1, row2 string) (*Element, error) {
 	var e Element
-	if len(row1) != tleLen || len(row2) != tleLen {
+	if len(row1) != tleLen {
 		return nil, InvalidLenError(len(row1))
+	}
+	if len(row2) != tleLen {
+		return nil, InvalidLenError(len(row2))
 	}
 	if err := scanLine1(row1, &e); err != nil {
 		return nil, err
