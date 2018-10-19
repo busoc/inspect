@@ -48,20 +48,10 @@ type rect struct {
 }
 
 func (r *rect) Contains(p Point) bool {
-	if !r.isDefined() {
-		return false
-	}
 	return (p.Lat > r.South && p.Lat < r.North) && (p.Lon > r.West && p.Lon < r.East)
 }
 
-func (r *rect) isDefined() bool {
-	return r.North == 0 && r.South == 0 && r.West == 0 && r.East == 0
-}
-
 func (r *rect) Set(s string) error {
-	if r == nil {
-		r = new(rect)
-	}
 	_, err := fmt.Sscanf(s, "%f:%f:%f:%f", &r.North, &r.East, &r.South, &r.West)
 	return err
 }
