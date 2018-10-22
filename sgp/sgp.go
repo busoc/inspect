@@ -323,6 +323,7 @@ extern void _wrap_days2mdhms_sgp_8b5016feffcb84af(swig_intgo arg1, double arg2, 
 extern void _wrap_invjday_sgp_8b5016feffcb84af(double arg1, double arg2, swig_voidp arg3, swig_voidp arg4, swig_voidp arg5, swig_voidp arg6, swig_voidp arg7, swig_voidp arg8);
 #undef intgo
 */
+// #cgo windows LDFLAGS: -lstdc++ -static
 import "C"
 
 import "unsafe"
