@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"sort"
 	// "strings"
@@ -61,6 +62,8 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 			period = diff
 			p -= diff
 		}
+		log.Printf("trajectory prediction from %s to %s", curr.When, curr.When.Add(period))
+		// TODO: first time should be the last time of previous element + by the step (s) value
 		ps, err := curr.Predict(period, s, saa)
 		if err != nil {
 			return nil, err

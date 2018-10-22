@@ -96,6 +96,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 	els.SetAscension(e.Ascension)
 
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
+	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
 	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), els.GetJdsatepoch()-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
@@ -114,6 +115,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 		if err != nil {
 			return nil, err
 		}
+		// TODO: wrap Invjday in sgp package with func Date(jd, jdf) time.Time
 		var (
 			year, month, day, hour, min int
 			seconds                     float64
@@ -125,6 +127,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 		for i := range ps {
 			ps[i] *= 1000
 		}
+		// TODO: compute eclipse on/off when knowing position of satellite
 		es = append(es, ps)
 		t := Point{
 			Lat:  lat,
