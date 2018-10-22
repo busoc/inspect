@@ -48,32 +48,37 @@ func Open(files []string, id int) (*Trajectory, error) {
 	return &t, nil
 }
 
-func (t *Trajectory) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
+func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, error) {
 	if p < s {
 		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
 	}
-	var rs []*Point
 	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
-	for i := 0; i < len(t.elements); i++ {
-		curr := t.elements[i]
-		period := p
-		if j := i + 1; j < len(t.elements) {
-			diff := t.elements[j].When.Sub(curr.When)
-			period = diff
-			p -= diff
+	q := make(chan *Result)
+	go func() {
+		defer close(q)
+
+		for i := 0; i < len(t.elements); i++ {
+			curr := t.elements[i]
+			period := p
+			if j := i + 1; j < len(t.elements) {
+				diff := t.elements[j].When.Sub(curr.When)
+				period = diff
+				p -= diff
+			}
+			log.Printf("trajectory prediction from %s to %s", curr.When, curr.When.Add(period))
+			// TODO: first time should be the last time of previous element + by the step (s) value
+			r, err := curr.Predict(period, s, saa)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			q <- r
 		}
-		log.Printf("trajectory prediction from %s to %s", curr.When, curr.When.Add(period))
-		// TODO: first time should be the last time of previous element + by the step (s) value
-		ps, err := curr.Predict(period, s, saa)
-		if err != nil {
-			return nil, err
-		}
-		rs = append(rs, ps...)
-	}
-	return rs, nil
+	}()
+	return q, nil
 }
 
-func (t *Trajectory) Scan(r io.Reader,sid int) error {
+func (t *Trajectory) Scan(r io.Reader, sid int) error {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
 		rs := make([]string, tleRows)

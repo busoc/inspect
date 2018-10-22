@@ -17,7 +17,7 @@ const (
 )
 
 const (
-	jd2mjd = 2400000.5
+	jd2mjd  = 2400000.5
 	jdByMil = 36525.0
 )
 

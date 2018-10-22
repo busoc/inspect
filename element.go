@@ -13,6 +13,11 @@ const (
 	row2 = "%d %5d %8f %8f %7f %8f %8f %11f%5d%1s"
 )
 
+type Result struct {
+	TLE    []string
+	Points []*Point
+}
+
 type Point struct {
 	When  time.Time
 	Epoch float64
@@ -54,6 +59,8 @@ type Element struct {
 	Anomaly      float64
 	Motion       float64
 	Revolution   int
+
+	TLE []string
 }
 
 func NewElement(row1, row2 string) (*Element, error) {
@@ -70,10 +77,11 @@ func NewElement(row1, row2 string) (*Element, error) {
 	if err := scanLine2(row2, &e); err != nil {
 		return nil, err
 	}
+	e.TLE = []string{row1, row2}
 	return &e, nil
 }
 
-func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
+func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	els := sgp.NewElsetrec()
 	defer sgp.DeleteElsetrec(els)
 
@@ -148,7 +156,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) ([]*Point, error) {
 		ts[i].Total = fes[i]
 		ts[i].Partial = pes[i]
 	}
-	return ts, nil
+	return &Result{TLE: e.TLE, Points: ts}, nil
 }
 
 func scanLine1(r string, e *Element) error {

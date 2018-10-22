@@ -80,7 +80,7 @@ func main() {
 	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
 	flag.Parse()
 
-	var write func(io.Writer, []*Point) error
+	var write func(io.Writer, <-chan *Result) error
 	switch strings.ToLower(*format) {
 	case "csv":
 		write = writeCSV
@@ -143,48 +143,54 @@ func main() {
 	}
 }
 
-func writeCSV(w io.Writer, ps []*Point) error {
+func writeCSV(w io.Writer, ps <-chan *Result) error {
 	ws := csv.NewWriter(w)
-	for _, p := range ps {
-		_, jd, _ := mjdTime(p.When)
-		var saa, eclipse int
-		if p.Saa {
-			saa++
-		}
-		if p.Total {
-			eclipse++
-		}
-		rs := []string{
-			p.When.Format("2006-01-02T15:04:05.000000"),
-			strconv.FormatFloat(jd, 'f', -1, 64),
-			strconv.FormatFloat(p.Alt/1000.0, 'f', -1, 64),
-			strconv.FormatFloat(p.Lat, 'f', -1, 64),
-			strconv.FormatFloat(p.Lon, 'f', -1, 64),
-			strconv.Itoa(eclipse),
-			strconv.Itoa(saa),
-			"-",
-		}
-		if err := ws.Write(rs); err != nil {
-			return err
+	for r := range ps {
+		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
+		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
+		for _, p := range r.Points {
+			_, jd, _ := mjdTime(p.When)
+			var saa, eclipse int
+			if p.Saa {
+				saa++
+			}
+			if p.Total {
+				eclipse++
+			}
+			rs := []string{
+				p.When.Format("2006-01-02T15:04:05.000000"),
+				strconv.FormatFloat(jd, 'f', -1, 64),
+				strconv.FormatFloat(p.Alt/1000.0, 'f', -1, 64),
+				strconv.FormatFloat(p.Lat, 'f', -1, 64),
+				strconv.FormatFloat(p.Lon, 'f', -1, 64),
+				strconv.Itoa(eclipse),
+				strconv.Itoa(saa),
+				"-",
+			}
+			if err := ws.Write(rs); err != nil {
+				return err
+			}
 		}
 	}
 	ws.Flush()
 	return ws.Error()
 }
 
-func writePipe(w io.Writer, ps []*Point) error {
+func writePipe(w io.Writer, ps <-chan *Result) error {
 	const row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
 	logger := log.New(w, "", 0)
-	for _, p := range ps {
-		var saa, eclipse int
-		if p.Saa {
-			saa++
+	for r := range ps {
+		for _, p := range r.Points {
+			var saa, eclipse int
+			if p.Saa {
+				saa++
+			}
+			if p.Total {
+				eclipse++
+			}
+			jd, _, _ := mjdTime(p.When)
+			logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/1000.0, p.Lat, p.Lon, eclipse, saa)
 		}
-		if p.Total {
-			eclipse++
-		}
-		jd, _, _ := mjdTime(p.When)
-		logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/1000.0, p.Lat, p.Lon, eclipse, saa)
 	}
 	return nil
 }
