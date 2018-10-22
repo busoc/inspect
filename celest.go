@@ -120,7 +120,7 @@ func main() {
 				log.Fatalln(err)
 			}
 			s, _ := r.Stat()
-			log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", flag.Arg(0), digest.Sum(nil), s.ModTime().Format(time.RFC1123))
+			log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", p, digest.Sum(nil), s.ModTime().Format(time.RFC1123))
 			r.Close()
 			digest.Reset()
 		}

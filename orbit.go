@@ -16,6 +16,10 @@ const (
 	xpdotp  = minPerDays / (2.0 * math.Pi)
 )
 
+const (
+	jd2mjd = 2400000.5
+	jdByMil = 36525.0
+
 const Axis = 3
 
 func gstTime(t time.Time) float64 {
@@ -41,7 +45,7 @@ func mjdTime(t time.Time) (float64, float64, float64) {
 	jd -= math.Trunc(3 * (math.Trunc(y+4900+c) / 100) / 4)
 	jd += f - 0.5
 
-	return jd, jd - 2400000.5, (jd - 2415020) / 36525
+	return jd, jd - jd2mjd, (jd - 2415020) / jdByMil
 }
 
 func Convert(t time.Time, teme []float64) (float64, float64, float64) {
@@ -84,7 +88,7 @@ func sunPosition(ws []time.Time) [][]float64 {
 	ps := make([][]float64, len(ws))
 	for i := range ws {
 		jd, _, _ := mjdTime(ws[i])
-		cjd := (jd - 2451545.0) / 36525.0
+		cjd := (jd - 2451545.0) / jdByMil
 		m := 357.5256 + (35999.049 * cjd)
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/rad2deg)) + (72 / secPerHours * math.Sin(2*m/rad2deg))
 		distance := (149.619 - (2.499 * math.Cos(m/rad2deg)) - (0.021 * math.Cos(2*m/rad2deg))) * math.Pow10(9)
