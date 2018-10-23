@@ -134,7 +134,7 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 		// fmt.Printf("%18.5f | %18.5f | %18.5f\n", ps[2], ps[0], ps[1])
 		var lat, lon, alt float64
 		if !teme {
-			lat, lon, alt = Convert(w, ps)
+			lat, lon, alt = ConvertTEME(w, ps)
 		} else {
 			lat, lon, alt = ps[0], ps[1], ps[2]
 		}

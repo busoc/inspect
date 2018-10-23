@@ -60,16 +60,19 @@ func mjdTime(t time.Time) (float64, float64, float64) {
 }
 
 func MJD(t time.Time) float64 {
-	_, jd, _ :=mjdTime(t)
+	_, jd, _ := mjdTime(t)
 	return jd
 }
 
-func Convert(t time.Time, teme []float64) (float64, float64, float64) {
+func ConvertTEME(t time.Time, teme []float64) (float64, float64, float64) {
 	ts := make([]float64, Axis)
 	for i := range teme {
 		ts[i] = teme[i] * 1000
 	}
-	rs := ecefCoordinates(t, ts)
+	return ConvertECEF(ecefCoordinates(t, ts))
+}
+
+func ConvertECEF(rs []float64) (float64, float64, float64) {
 	var norm float64
 	for i := range rs {
 		norm += rs[i] * rs[i]
