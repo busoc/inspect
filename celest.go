@@ -1,25 +1,8 @@
-package main
+package celest
 
 import (
-	"crypto/md5"
-	"encoding/csv"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"path"
-	"strconv"
-	"strings"
+	"math"
 	"time"
-)
-
-const (
-	SAALatMin = -60.0
-	SAALatMax = -5.0
-	SAALonMin = -80.0
-	SAALonMax = 40.0
 )
 
 const (
@@ -32,165 +15,180 @@ const (
 	minPerDays  = 1440.0
 )
 
-const DefaultSid = 25544
-
 const (
-	Program   = "inspect"
-	Version   = "0.0.1"
-	BuildTime = "2018-10-16 11:10:00"
+	earthRadius = 6378.136 * 1000
+	sunRadius   = 6.96033e8
 )
 
-type rect struct {
-	North float64
-	South float64
-	West  float64
-	East  float64
+const (
+	rad2deg = math.Pi * 180.0
+	deg2rad = math.Pi / 180.0
+	xpdotp  = minPerDays / (2.0 * math.Pi)
+)
+
+const (
+	jd2mjd  = 2400000.5
+	jdByMil = 36525.0
+)
+
+const Axis = 3
+
+func gstTime(t time.Time) float64 {
+	_, _, cjd := mjdTime(t)
+	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
+
+	gha := 23925.836 + 8640184*cjd + 0.092*cjd*cjd + (h + m + s)
+	gst := gha * 360.0 / secPerDays
+	gst -= math.Floor(gst/360.0) * 360.0
+
+	return gst / 180.0 * math.Pi
 }
 
-func (r *rect) Contains(p Point) bool {
-	return (p.Lat > r.South && p.Lat < r.North) && (p.Lon > r.West && p.Lon < r.East)
+func mjdTime(t time.Time) (float64, float64, float64) {
+	y, m, d := float64(t.Year()), float64(t.Month()), float64(t.Day())
+	h, i, s, ms := float64(t.Hour()), float64(t.Minute()), float64(t.Second()), float64(t.Nanosecond())/1000
+
+	f := ((ms / math.Pow10(9)) + s + (i * secPerMins) + (h * secPerHours)) / secPerDays
+	c := math.Trunc((m - 14) / 12)
+
+	jd := d - 32075 + math.Trunc(1461*(y+4800+c)/4)
+	jd += math.Trunc(367 * (m - 2 - c*12) / 12)
+	jd -= math.Trunc(3 * (math.Trunc(y+4900+c) / 100) / 4)
+	jd += f - 0.5
+
+	return jd, jd - jd2mjd, (jd - 2415020) / jdByMil
 }
 
-func (r *rect) Set(s string) error {
-	_, err := fmt.Sscanf(s, "%f:%f:%f:%f", &r.North, &r.East, &r.South, &r.West)
-	return err
+func MJD(t time.Time) float64 {
+	_, jd, _ :=mjdTime(t)
+	return jd
 }
 
-func (r *rect) String() string {
-	return fmt.Sprintf("rect(%.2fN:%.2fE:%.2fS:%.2fW)", r.North, r.East, r.South, r.West)
+func Convert(t time.Time, teme []float64) (float64, float64, float64) {
+	ts := make([]float64, Axis)
+	for i := range teme {
+		ts[i] = teme[i] * 1000
+	}
+	rs := ecefCoordinates(t, ts)
+	var norm float64
+	for i := range rs {
+		norm += rs[i] * rs[i]
+	}
+	norm = math.Sqrt(norm)
+
+	lat := math.Asin(rs[2]/norm) / math.Pi * 180
+	lon := math.Atan2(rs[1], rs[0]) / math.Pi * 180
+
+	return lat, lon, norm - earthRadius
 }
 
-func init() {
-	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
+func ecefCoordinates(t time.Time, teme []float64) []float64 {
+	gst := gstTime(t)
+
+	cos, sin := math.Cos(gst), math.Sin(gst)
+	x, y := teme[0], teme[1]
+
+	rs := make([]float64, Axis)
+	rs[0] = cos*x + sin*y
+	rs[1] = -sin*x + cos*y
+	rs[2] = teme[2]
+
+	return rs
 }
 
-func main() {
-	saa := rect{
-		North: SAALatMax,
-		South: SAALatMin,
-		East:  SAALonMax,
-		West:  SAALonMin,
-	}
-	flag.Var(&saa, "r", "saa area")
-	copydir := flag.String("t", os.TempDir(), "temp dir")
-	format := flag.String("f", "pipe", "output format")
-	sid := flag.Int("s", DefaultSid, "satellite number")
-	period := flag.Duration("d", time.Hour*72, "time range")
-	interval := flag.Duration("i", time.Minute, "time interval")
-	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
-	flag.Parse()
+func sunPosition(ws []time.Time) [][]float64 {
+	const (
+		omega   = 282.9400
+		epsilon = 23.43929111 / 180 * math.Pi
+	)
+	ps := make([][]float64, len(ws))
+	for i := range ws {
+		jd, _, _ := mjdTime(ws[i])
+		cjd := (jd - 2451545.0) / jdByMil
+		m := 357.5256 + (35999.049 * cjd)
+		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/rad2deg)) + (72 / secPerHours * math.Sin(2*m/rad2deg))
+		distance := (149.619 - (2.499 * math.Cos(m/rad2deg)) - (0.021 * math.Cos(2*m/rad2deg))) * math.Pow10(9)
 
-	var write func(io.Writer, <-chan *Result) error
-	switch strings.ToLower(*format) {
-	case "csv":
-		write = writeCSV
-	case "", "pipe":
-		write = writePipe
-	default:
-		log.Fatalln("unsupported output format: %s", *format)
+		lat := distance * math.Cos(ecliptic/180*math.Pi)
+		lon := distance * math.Sin(ecliptic/180*math.Pi) * math.Cos(epsilon)
+		alt := distance * math.Sin(ecliptic/180*math.Pi) * math.Sin(epsilon)
+		ps[i] = []float64{lat, lon, alt}
 	}
-
-	var t Trajectory
-	digest := md5.New()
-	if resp, err := http.Get(flag.Arg(0)); err == nil {
-		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("fail to fetch data from %s (%s)", flag.Arg(0), resp.Status)
-		}
-		var w io.Writer = digest
-		suffix := "-" + time.Now().Format("20060102_150405")
-		if err := os.MkdirAll(*copydir, 0755); err != nil && !os.IsExist(err) {
-			log.Fatalln(err)
-		}
-		if f, err := os.Create(path.Join(*copydir, path.Base(flag.Arg(0)+suffix))); err == nil {
-			defer f.Close()
-			w = io.MultiWriter(f, w)
-		}
-		if err := t.Scan(io.TeeReader(resp.Body, w), *sid); err != nil {
-			log.Fatalln(err)
-		}
-		log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", flag.Arg(0), digest.Sum(nil), resp.Header.Get("last-modified"))
-		resp.Body.Close()
-	} else {
-		for _, p := range flag.Args() {
-			r, err := os.Open(p)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			if err := t.Scan(io.TeeReader(r, digest), *sid); err != nil {
-				log.Fatalln(err)
-			}
-			s, _ := r.Stat()
-			log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", p, digest.Sum(nil), s.ModTime().Format(time.RFC1123))
-			r.Close()
-			digest.Reset()
-		}
-	}
-
-	ps, err := t.Predict(*period, *interval, &saa)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	var w io.Writer = os.Stdout
-	switch f, err := os.Create(*file); {
-	case err == nil:
-		defer f.Close()
-		w = f
-	case err != nil && *file != "":
-		log.Fatalln(err)
-	}
-	if err := write(w, ps); err != nil {
-		log.Fatalln(err)
-	}
+	return ps
 }
 
-func writeCSV(w io.Writer, ps <-chan *Result) error {
-	ws := csv.NewWriter(w)
-	for r := range ps {
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
-		for _, p := range r.Points {
-			_, jd, _ := mjdTime(p.When)
-			var saa, eclipse int
-			if p.Saa {
-				saa++
-			}
-			if p.Total {
-				eclipse++
-			}
-			rs := []string{
-				p.When.Format("2006-01-02T15:04:05.000000"),
-				strconv.FormatFloat(jd, 'f', -1, 64),
-				strconv.FormatFloat(p.Alt/1000.0, 'f', -1, 64),
-				strconv.FormatFloat(p.Lat, 'f', -1, 64),
-				strconv.FormatFloat(p.Lon, 'f', -1, 64),
-				strconv.Itoa(eclipse),
-				strconv.Itoa(saa),
-				"-",
-			}
-			if err := ws.Write(rs); err != nil {
-				return err
-			}
-		}
+func eclipseStatus(ps [][]float64, ws []time.Time) ([]bool, []bool) {
+	sun := sunPosition(ws)
+	t1 := make([][]float64, len(ps))
+	t2 := make([][]float64, len(ps))
+	for i := 0; i < len(ps); i++ {
+		t1[i] = make([]float64, Axis)
+		t1[i][0] = sun[i][0] - ps[i][0]
+		t1[i][1] = sun[i][1] - ps[i][1]
+		t1[i][2] = sun[i][2] - ps[i][2]
+
+		t2[i] = make([]float64, Axis)
+		t2[i][0] = -ps[i][0]
+		t2[i][1] = -ps[i][1]
+		t2[i][2] = -ps[i][2]
 	}
-	ws.Flush()
-	return ws.Error()
+	direction := normalizeArray(t1)
+	nadir := normalizeArray(t2)
+
+	var earthSunAngles, earthAngles, sunAngles []float64
+	for _, d := range dotProductArray(direction, nadir) {
+		earthSunAngles = append(earthSunAngles, math.Acos(d))
+	}
+	for _, d := range normsArray(ps) {
+		earthAngles = append(earthAngles, math.Asin(earthRadius/d))
+	}
+	for _, d := range normsArray(sun) {
+		sunAngles = append(sunAngles, math.Asin(sunRadius/d))
+	}
+	fes := make([]bool, len(ps))
+	pes := make([]bool, len(ps))
+	for i := range fes {
+		fa := earthSunAngles[i] < math.Abs(earthAngles[i]-sunAngles[i])
+		fb := earthAngles[i] > sunAngles[i]
+		fes[i] = fa && fb
+
+		pa := earthSunAngles[i] > math.Abs(earthAngles[i]-sunAngles[i])
+		pb := earthAngles[i]+sunAngles[i] > earthSunAngles[i]
+		pes[i] = pa && pb
+	}
+
+	return fes, pes
 }
 
-func writePipe(w io.Writer, ps <-chan *Result) error {
-	const row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
-	logger := log.New(w, "", 0)
-	for r := range ps {
-		for _, p := range r.Points {
-			var saa, eclipse int
-			if p.Saa {
-				saa++
-			}
-			if p.Total {
-				eclipse++
-			}
-			jd, _, _ := mjdTime(p.When)
-			logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/1000.0, p.Lat, p.Lon, eclipse, saa)
+func normsArray(ps [][]float64) []float64 {
+	ns := make([]float64, len(ps))
+	for i := 0; i < len(ns); i++ {
+		x, y, z := ps[i][0], ps[i][1], ps[i][2]
+		n := x*x + y*y + z*z
+		ns[i] = math.Sqrt(n)
+	}
+	return ns
+}
+
+func normalizeArray(ps [][]float64) [][]float64 {
+	norm := normsArray(ps)
+	as := make([][]float64, len(ps))
+	for i := 0; i < Axis; i++ {
+		for j := 0; j < len(ps); j++ {
+			as[j] = append(as[j], ps[j][i]/norm[j])
 		}
 	}
-	return nil
+	return as
+}
+
+func dotProductArray(a, b [][]float64) []float64 {
+	var ds []float64
+	for i := 0; i < len(a); i++ {
+		var n float64
+		for j := 0; j < Axis; j++ {
+			n += a[i][j] * b[i][j]
+		}
+		ds = append(ds, n)
+	}
+	return ds
 }
