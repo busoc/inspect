@@ -81,7 +81,7 @@ func NewElement(row1, row2 string) (*Element, error) {
 	return &e, nil
 }
 
-func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
+func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, error) {
 	els := sgp.NewElsetrec()
 	defer sgp.DeleteElsetrec(els)
 
@@ -131,7 +131,13 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
 		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
 
-		lat, lon, alt := Convert(w, ps)
+		// fmt.Printf("%18.5f | %18.5f | %18.5f\n", ps[2], ps[0], ps[1])
+		var lat, lon, alt float64
+		if !teme {
+			lat, lon, alt = Convert(w, ps)
+		} else {
+			lat, lon, alt = ps[0], ps[1], ps[2]
+		}
 		for i := range ps {
 			ps[i] *= 1000
 		}

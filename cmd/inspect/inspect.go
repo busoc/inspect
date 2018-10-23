@@ -80,9 +80,10 @@ func main() {
 	period := flag.Duration("d", time.Hour*72, "time range")
 	interval := flag.Duration("i", time.Minute, "time interval")
 	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
+	teme := flag.Bool("k", false, "keep TEME coordonates")
 	flag.Parse()
 
-	var write func(io.Writer, <-chan *celest.Result) error
+	var write func(io.Writer, bool, <-chan *celest.Result) error
 	switch strings.ToLower(*format) {
 	case "csv":
 		write = writeCSV
@@ -128,7 +129,7 @@ func main() {
 		}
 	}
 
-	ps, err := t.Predict(*period, *interval, &saa)
+	ps, err := t.Predict(*period, *interval, *teme, &saa)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -140,12 +141,16 @@ func main() {
 	case err != nil && *file != "":
 		log.Fatalln(err)
 	}
-	if err := write(w, ps); err != nil {
+	if err := write(w, *teme, ps); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func writeCSV(w io.Writer, ps <-chan *celest.Result) error {
+func writeCSV(w io.Writer, teme bool, ps <-chan *celest.Result) error {
+	div := 1.0
+	if !teme {
+		div = 1000
+	}
 	ws := csv.NewWriter(w)
 	for r := range ps {
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
@@ -162,7 +167,7 @@ func writeCSV(w io.Writer, ps <-chan *celest.Result) error {
 			rs := []string{
 				p.When.Format("2006-01-02T15:04:05.000000"),
 				strconv.FormatFloat(jd, 'f', -1, 64),
-				strconv.FormatFloat(p.Alt/1000.0, 'f', -1, 64),
+				strconv.FormatFloat(p.Alt/div, 'f', -1, 64),
 				strconv.FormatFloat(p.Lat, 'f', -1, 64),
 				strconv.FormatFloat(p.Lon, 'f', -1, 64),
 				strconv.Itoa(eclipse),
@@ -178,7 +183,11 @@ func writeCSV(w io.Writer, ps <-chan *celest.Result) error {
 	return ws.Error()
 }
 
-func writePipe(w io.Writer, ps <-chan *celest.Result) error {
+func writePipe(w io.Writer, teme bool, ps <-chan *celest.Result) error {
+	div := 1.0
+	if !teme {
+		div = 1000
+	}
 	const row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
 	logger := log.New(w, "", 0)
 	for r := range ps {
@@ -191,7 +200,7 @@ func writePipe(w io.Writer, ps <-chan *celest.Result) error {
 				eclipse++
 			}
 			jd := celest.MJD(p.When)
-			logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/1000.0, p.Lat, p.Lon, eclipse, saa)
+			logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/div, p.Lat, p.Lon, eclipse, saa)
 		}
 	}
 	return nil

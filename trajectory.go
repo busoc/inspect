@@ -48,7 +48,7 @@ func Open(files []string, id int) (*Trajectory, error) {
 	return &t, nil
 }
 
-func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, error) {
+func (t *Trajectory) Predict(p, s time.Duration, teme bool, saa Shape) (<-chan *Result, error) {
 	if p < s {
 		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
 	}
@@ -67,7 +67,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, err
 			}
 			log.Printf("trajectory prediction from %s to %s", curr.When, curr.When.Add(period))
 			// TODO: first time should be the last time of previous element + by the step (s) value
-			r, err := curr.Predict(period, s, saa)
+			r, err := curr.Predict(period, s, teme, saa)
 			if err != nil {
 				log.Println(err)
 				return
