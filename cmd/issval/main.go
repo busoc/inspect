@@ -32,8 +32,9 @@ func main() {
 		p.When = p.When.Add(Delta)
 		if !*keep {
 			p.Lat, p.Lon, p.Alt = celest.ConvertTEME(p.When, []float64{p.Lat, p.Lon, p.Alt})
+			p.Alt /= 1000
 		}
-		log.Printf("%s | %18.5f | %18.5f | %18.5f | %d | %d", p.When.Format("2006-01-02 15:04:05"), p.Alt/1000, p.Lat, p.Lon, eclipse, saa)
+		log.Printf("%s | %18.5f | %18.5f | %18.5f | %d | %d", p.When.Format("2006-01-02 15:04:05"), p.Alt, p.Lat, p.Lon, eclipse, saa)
 	}
 }
 
