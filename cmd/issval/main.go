@@ -104,6 +104,11 @@ var (
 	UMISunStat = []byte{0x0C, 0x00, 0x00, 0x00, 0x8E, 0xEF} //0x0C0000008EEF
 )
 
+const (
+	SaaInFlag = "IN"
+	SunInFlag = "NIGHT"
+)
+
 func readPoints(r io.Reader) ([]*Point, error) {
 	s := bufio.NewScanner(r)
 	s.Split(scanPackets)
@@ -136,11 +141,9 @@ func readPoints(r io.Reader) ([]*Point, error) {
 		case bytes.Equal(xs, UMIPosZ) && curr != nil:
 			curr.Alt = readFloat(bs[21:])
 		case bytes.Equal(xs, UMISaaStat) && curr != nil:
-			v := bytes.Trim(bs[21:], "\x00")
-			curr.Saa = string(v) == "IN"
+			curr.Saa = string(bytes.Trim(bs[21:], "\x00")) == SaaInFlag
 		case bytes.Equal(xs, UMISunStat) && curr != nil:
-			v := bytes.Trim(bs[21:], "\x00")
-			curr.Eclipse = string(v) == "NIGHT"
+			curr.Eclipse = string(bytes.Trim(bs[21:], "\x00")) == SunInFlag
 		default:
 			continue
 		}
