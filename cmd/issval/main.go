@@ -45,7 +45,7 @@ const FeetTo = 3280.841
 var (
 	UNIX  = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	GPS   = time.Date(1980, 1, 6, 0, 0, 0, 0, time.UTC)
-	Delta = GPS.Sub(UNIX)
+	Delta = GPS.Sub(UNIX) - Leap
 )
 
 type Point struct {
