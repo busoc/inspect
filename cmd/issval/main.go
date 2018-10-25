@@ -4,23 +4,108 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"flag"
 	"io"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
-	"time"
+  "time"
+	"flag"
+	"log"
 
 	"github.com/busoc/celest"
+)
+
+const DiffKM = 100
+
+const (
+	PredictTimeIndex    = 0
+	PredictIndexZ       = 2
+	PredictIndexX       = 3
+	PredictIndexY       = 4
+	PredictEclipseIndex = 5
+	PredictSaaIndex     = 6
+	PredictColumns      = 8
+	PredictComma        = ','
+	PredictComment      = '#'
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(0)
 
+	var xyz delta
+	flag.IntVar(&xyz.X, "dx", DiffKM, "delta x")
+	flag.IntVar(&xyz.Y, "dy", DiffKM, "delta y")
+	flag.IntVar(&xyz.Z, "dz", DiffKM, "delta z")
+	other := flag.String("", "", "compare with propagated trajectory")
 	keep := flag.Bool("k", false, "keep xyz coordinates")
 	flag.Parse()
+
+	switch *other {
+	default:
+		r, err := os.Open(*other)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		defer r.Close()
+		comparePoints(r, flag.Args(), xyz)
+	case "-":
+		comparePoints(os.Stdin, flag.Args(), xyz)
+	case "":
+		listPoints(flag.Args(), *keep)
+	}
+}
+
+type delta struct {
+  X int
+  Y int
+  Z int
+}
+
+func comparePoints(r io.Reader, ps []string, xyz delta) {
+	rs := csv.NewReader(r)
+	rs.Comment = PredictComment
+	rs.Comma = PredictComma
+	rs.FieldsPerRecord = PredictColumns
+
+	queue := fetchPoints(ps)
+	for {
+		vs, err := rs.Read()
+		if vs == nil && err == io.EOF {
+			break
+		}
+		if err != nil && err != io.EOF {
+			return
+		}
+		pt, err := pointFromRow(vs)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func pointFromRow(vs []string) (*Point, error) {
+	var (
+		err error
+		pt  Point
+	)
+
+	if pt.When, err = time.Parse("2006-01-02 15:04:05", vs[PredictTimeIndex]); err != nil {
+		return nil, err
+	}
+	if pt.Alt, err = strconv.ParseFloat(vs[PredictIndexZ], 64); err != nil {
+		return nil, err
+	}
+	if pt.Lat, err = strconv.ParseFloat(vs[PredictIndexX], 64); err != nil {
+		return nil, err
+	}
+	if pt.Lon, err = strconv.ParseFloat(vs[PredictIndexY], 64); err != nil {
+		return nil, err
+	}
+	return &pt, err
+}
+
+func listPoints(ps []string, keep bool) {
 	for p := range fetchPoints(flag.Args()) {
 		var saa, eclipse int
 		if p.Saa {
@@ -30,7 +115,7 @@ func main() {
 			eclipse++
 		}
 		p.When = p.When.Add(Delta)
-		if !*keep {
+		if !keep {
 			p.Lat, p.Lon, p.Alt = celest.ConvertTEME(p.When, []float64{p.Lat, p.Lon, p.Alt})
 			p.Alt /= 1000
 		}
@@ -38,11 +123,10 @@ func main() {
 	}
 }
 
-const Leap = 18 * time.Second
-
 const FeetTo = 3280.841
 
 var (
+	Leap  = 18 * time.Second
 	UNIX  = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	GPS   = time.Date(1980, 1, 6, 0, 0, 0, 0, time.UTC)
 	Delta = GPS.Sub(UNIX) - Leap
