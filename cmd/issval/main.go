@@ -4,13 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/csv"
+	"flag"
 	"io"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
-  "time"
-	"flag"
-	"log"
+	"strconv"
+	"time"
 
 	"github.com/busoc/celest"
 )
@@ -18,6 +20,8 @@ import (
 const DiffKM = 100
 
 const (
+	TimeFormat          = "2006-01-02 15:04:05"
+	PredictTimeFormat   = "2006-01-02T15:04:05.000000"
 	PredictTimeIndex    = 0
 	PredictIndexZ       = 2
 	PredictIndexX       = 3
@@ -33,76 +37,64 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(0)
 
-	var xyz delta
-	flag.IntVar(&xyz.X, "dx", DiffKM, "delta x")
-	flag.IntVar(&xyz.Y, "dy", DiffKM, "delta y")
-	flag.IntVar(&xyz.Z, "dz", DiffKM, "delta z")
-	other := flag.String("", "", "compare with propagated trajectory")
 	keep := flag.Bool("k", false, "keep xyz coordinates")
+	other := flag.String("t", "", "compare with propagated trajectory")
 	flag.Parse()
 
+	var err error
 	switch *other {
 	default:
-		r, err := os.Open(*other)
-		if err != nil {
-			log.Fatalln(err)
+		r, e := os.Open(*other)
+		if e != nil {
+			err = e
+			break
 		}
 		defer r.Close()
-		comparePoints(r, flag.Args(), xyz)
+		err = comparePoints(r, flag.Args(), *keep)
 	case "-":
-		comparePoints(os.Stdin, flag.Args(), xyz)
+		err = comparePoints(os.Stdin, flag.Args(), *keep)
 	case "":
 		listPoints(flag.Args(), *keep)
+	}
+	if err != nil {
+		log.Fatalln(err)
 	}
 }
 
 type delta struct {
-  X int
-  Y int
-  Z int
+	X    float64
+	Y    float64
+	Z    float64
+	Raw  bool
+	Dist float64
 }
 
-func comparePoints(r io.Reader, ps []string, xyz delta) {
+func comparePoints(r io.Reader, ps []string, keep bool) error {
 	rs := csv.NewReader(r)
 	rs.Comment = PredictComment
 	rs.Comma = PredictComma
 	rs.FieldsPerRecord = PredictColumns
 
-	queue := fetchPoints(ps)
-	for {
-		vs, err := rs.Read()
-		if vs == nil && err == io.EOF {
-			break
+	for p := range fetchPoints(ps) {
+		var c *Point
+		for {
+			n, err := pointFromReader(rs)
+			if err != nil || n == nil {
+				return err
+			}
+			if p.When.Truncate(time.Second).Equal(n.When) {
+				c = n
+				break
+			}
 		}
-		if err != nil && err != io.EOF {
-			return
+		if keep {
+			log.Printf("%s | %s | %12.5fkm", c.When.Format(TimeFormat), p.When.Format(TimeFormat), c.Cartesian(*p))
+		} else {
+			p = p.Convert()
+			log.Printf("%s | %s | %12.5fkm", c.When.Format(TimeFormat), p.When.Format(TimeFormat), c.Haversin(*p))
 		}
-		pt, err := pointFromRow(vs)
-		if err != nil {
-			return err
-		}
 	}
-}
-
-func pointFromRow(vs []string) (*Point, error) {
-	var (
-		err error
-		pt  Point
-	)
-
-	if pt.When, err = time.Parse("2006-01-02 15:04:05", vs[PredictTimeIndex]); err != nil {
-		return nil, err
-	}
-	if pt.Alt, err = strconv.ParseFloat(vs[PredictIndexZ], 64); err != nil {
-		return nil, err
-	}
-	if pt.Lat, err = strconv.ParseFloat(vs[PredictIndexX], 64); err != nil {
-		return nil, err
-	}
-	if pt.Lon, err = strconv.ParseFloat(vs[PredictIndexY], 64); err != nil {
-		return nil, err
-	}
-	return &pt, err
+	return nil
 }
 
 func listPoints(ps []string, keep bool) {
@@ -114,12 +106,11 @@ func listPoints(ps []string, keep bool) {
 		if p.Eclipse {
 			eclipse++
 		}
-		p.When = p.When.Add(Delta)
 		if !keep {
-			p.Lat, p.Lon, p.Alt = celest.ConvertTEME(p.When, []float64{p.Lat, p.Lon, p.Alt})
+			p = p.Convert()
 			p.Alt /= 1000
 		}
-		log.Printf("%s | %18.5f | %18.5f | %18.5f | %d | %d", p.When.Format("2006-01-02 15:04:05"), p.Alt, p.Lat, p.Lon, eclipse, saa)
+		log.Printf("%s | %18.5f | %18.5f | %18.5f | %d | %d", p.When.Format(TimeFormat), p.Alt, p.Lat, p.Lon, eclipse, saa)
 	}
 }
 
@@ -132,6 +123,8 @@ var (
 	Delta = GPS.Sub(UNIX) - Leap
 )
 
+const earthRadius = 6378.136
+
 type Point struct {
 	When time.Time
 
@@ -141,6 +134,35 @@ type Point struct {
 
 	Saa     bool
 	Eclipse bool
+}
+
+func (p *Point) Convert() *Point {
+	lat, lon, alt := celest.ConvertTEME(p.When, []float64{p.Lat, p.Lon, p.Alt})
+	return &Point{
+		When:    p.When,
+		Lat:     lat,
+		Lon:     lon,
+		Alt:     alt,
+		Saa:     p.Saa,
+		Eclipse: p.Eclipse,
+	}
+}
+
+func (p Point) Haversin(r Point) float64 {
+	plat, plon := p.Lat*(math.Pi/180), p.Lon*(math.Pi/180)
+	rlat, rlon := r.Lat*(math.Pi/180), r.Lon*(math.Pi/180)
+
+	deltaLat := (rlat - plat) / 2
+	deltaLon := (rlon - plon) / 2
+	a := math.Pow(math.Sin(deltaLat), 2) + (math.Cos(plat) * math.Cos(rlon) * math.Pow(math.Sin(deltaLon), 2))
+	return 2 * earthRadius * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+}
+
+func (p Point) Cartesian(r Point) float64 {
+	x := math.Pow(p.Lat-r.Lat, 2)
+	y := math.Pow(p.Lon-r.Lon, 2)
+	z := math.Pow(p.Alt-r.Alt, 2)
+	return math.Sqrt(x + y + z)
 }
 
 func fetchPoints(ps []string) <-chan *Point {
@@ -212,7 +234,7 @@ func readPoints(r io.Reader) ([]*Point, error) {
 		w := readTime5(coarse, fine).Truncate(time.Second)
 		switch xs := bs[5:11]; {
 		case bytes.Equal(xs, UMIPosX):
-			tmp := &Point{When: w}
+			tmp := &Point{When: w.Add(Delta)}
 			if curr != nil {
 				tmp.Saa = curr.Saa
 				tmp.Eclipse = curr.Eclipse
@@ -258,4 +280,30 @@ func readTime5(coarse uint32, fine uint8) time.Time {
 	fs := float64(fine) / 256.0 * 1000.0
 	ms := time.Duration(fs) * time.Millisecond
 	return t.Add(ms).UTC()
+}
+
+func pointFromReader(rs *csv.Reader) (*Point, error) {
+	vs, err := rs.Read()
+	if vs == nil && err == io.EOF {
+		return nil, nil
+	}
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	var pt Point
+	if pt.When, err = time.Parse(PredictTimeFormat, vs[PredictTimeIndex]); err != nil {
+		return nil, err
+	}
+	pt.When = pt.When.Truncate(time.Second)
+	if pt.Alt, err = strconv.ParseFloat(vs[PredictIndexZ], 64); err != nil {
+		return nil, err
+	}
+	if pt.Lat, err = strconv.ParseFloat(vs[PredictIndexX], 64); err != nil {
+		return nil, err
+	}
+	if pt.Lon, err = strconv.ParseFloat(vs[PredictIndexY], 64); err != nil {
+		return nil, err
+	}
+	return &pt, err
 }
