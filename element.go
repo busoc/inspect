@@ -105,7 +105,8 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
-	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), els.GetJdsatepoch()-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
+	epoch := els.GetJdsatepoch()
+	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
 	var (
@@ -129,7 +130,8 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 			seconds                     float64
 		)
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
-		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
+		ns := jdf * math.Pow10(9)
+		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), int(ns), time.UTC)
 
 		// fmt.Printf("%18.5f | %18.5f | %18.5f\n", ps[2], ps[0], ps[1])
 		var lat, lon, alt float64

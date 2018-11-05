@@ -87,12 +87,14 @@ func comparePoints(r io.Reader, ps []string, keep bool) error {
 				break
 			}
 		}
+		var dist float64
 		if keep {
-			log.Printf("%s | %s | %12.5fkm", c.When.Format(TimeFormat), p.When.Format(TimeFormat), c.Cartesian(*p))
+			dist = c.Cartesian(*p)
 		} else {
-			p = p.Convert()
-			log.Printf("%s | %s | %12.5fkm", c.When.Format(TimeFormat), p.When.Format(TimeFormat), c.Haversin(*p))
+			x := p.Convert()
+			dist = c.Haversin(*x)
 		}
+		log.Printf("%s | %s | %12.5fkm | %t | %t", c.When.Format(TimeFormat), p.When.Format(TimeFormat), dist, c.Eclipse == p.Eclipse, c.Saa == p.Saa)
 	}
 	return nil
 }

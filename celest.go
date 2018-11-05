@@ -3,6 +3,7 @@ package celest
 import (
 	"math"
 	"time"
+	_ "log"
 )
 
 const (

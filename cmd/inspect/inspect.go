@@ -200,7 +200,7 @@ func writePipe(w io.Writer, teme bool, ps <-chan *celest.Result) error {
 				eclipse++
 			}
 			jd := celest.MJD(p.When)
-			logger.Printf(row, p.When.Format("2006-01-02 15:04:05"), jd, p.Alt/div, p.Lat, p.Lon, eclipse, saa)
+			logger.Printf(row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, p.Lat, p.Lon, eclipse, saa)
 		}
 	}
 	return nil
