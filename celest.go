@@ -69,7 +69,7 @@ func ConvertTEME(t time.Time, teme []float64) (float64, float64, float64) {
 	for i := range teme {
 		ts[i] = teme[i] * 1000
 	}
-	return ConvertECEF(ecefCoordinates(t, ts))
+	return ConvertECEF(ecefCoordinates(gstTime(t), ts))
 }
 
 func ConvertECEF(rs []float64) (float64, float64, float64) {
@@ -85,9 +85,7 @@ func ConvertECEF(rs []float64) (float64, float64, float64) {
 	return lat, lon, norm - earthRadius
 }
 
-func ecefCoordinates(t time.Time, teme []float64) []float64 {
-	gst := gstTime(t)
-
+func ecefCoordinates(gst float64, teme []float64) []float64 {
 	cos, sin := math.Cos(gst), math.Sin(gst)
 	x, y := teme[0], teme[1]
 
@@ -99,14 +97,15 @@ func ecefCoordinates(t time.Time, teme []float64) []float64 {
 	return rs
 }
 
-func sunPosition(ws []time.Time) [][]float64 {
+func sunPosition(ws []float64) [][]float64 {
 	const (
 		omega   = 282.9400
 		epsilon = 23.43929111 / 180 * math.Pi
 	)
 	ps := make([][]float64, len(ws))
 	for i := range ws {
-		jd, _, _ := mjdTime(ws[i])
+		jd := ws[i]
+		// jd, _, _ := mjdTime(ws[i])
 		cjd := (jd - 2451545.0) / jdByMil
 		m := 357.5256 + 35999.049 * cjd
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
@@ -120,7 +119,7 @@ func sunPosition(ws []time.Time) [][]float64 {
 	return ps
 }
 
-func eclipseStatus(ps [][]float64, ws []time.Time) ([]bool, []bool) {
+func eclipseStatus(ps [][]float64, ws []float64) ([]bool, []bool) {
 	sun := sunPosition(ws)
 	t1 := make([][]float64, len(ps))
 	t2 := make([][]float64, len(ps))

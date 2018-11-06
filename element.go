@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	_ "log"
 
 	"github.com/busoc/celest/sgp"
 )
@@ -105,13 +106,14 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
-	epoch := els.GetJdsatepoch()
+	epoch := els.GetJdsatepoch() + els.GetJdsatepochF()
 	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
 	var (
 		ts []*Point
-		ws []time.Time
+		// ws []time.Time
+		js []float64
 		es [][]float64
 	)
 	delta := s.Seconds() / time.Minute.Seconds()
@@ -126,12 +128,15 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 			year, month, day, hour, min int
 			seconds                     float64
 		)
-		jd := els.GetJdsatepoch() + (when / minPerDays)
-		jdf := els.GetJdsatepochF()
+		jd := els.GetJdsatepoch()
+		jdf := els.GetJdsatepochF() + (when / minPerDays)
+		if jdf < 0 {
+			jd -= 1.0
+			jdf += 1.0
+		}
 
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
-		ns := jdf * math.Pow10(9)
-		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), int(ns), time.UTC)
+		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
 
 		var lat, lon, alt float64
 		if !teme {
@@ -154,11 +159,12 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 			t.Saa = saa.Contains(t)
 		}
 		ts = append(ts, &t)
-		ws = append(ws, w)
+		js = append(js, jd+jdf)
+		// ws = append(ws, w)
 
 		when += delta
 	}
-	fes, pes := eclipseStatus(es, ws)
+	fes, pes := eclipseStatus(es, js)
 	for i := 0; i < len(ts); i++ {
 		ts[i].Total = fes[i]
 		ts[i].Partial = pes[i]
