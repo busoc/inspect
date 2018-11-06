@@ -2,7 +2,6 @@ package celest
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"time"
 
@@ -110,13 +109,15 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
 
-	log.Printf("perigee: %12f", els.GetPerigee())
-	log.Printf("bstar: %12f", els.GetBstar())
-	log.Printf("excentricity: %12f", els.GetExcentricity())
-	log.Printf("inclination: %12f", els.GetInclination())
-	log.Printf("motion: %12f", els.GetMotion())
-
-	log.Printf("%+v", e)
+	// log.Printf("bstar (bstar)      : %12g", els.GetBstar())
+	// log.Printf("inclination (inclo): %12g", els.GetInclination())
+	// log.Printf("ascension (nodeo)  : %12g", els.GetAscension())
+	// log.Printf("excentricity (ecco): %12g", els.GetExcentricity())
+	// log.Printf("perigee (argpo)    : %12g", els.GetPerigee())
+	// log.Printf("anomaly (mo)       : %12g", els.GetAnomaly())
+	// log.Printf("motion (??)        : %12g", els.GetMotion())
+	//
+	// log.Printf("%+v", e)
 
 	var (
 		ts []*Point
