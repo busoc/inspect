@@ -27,14 +27,16 @@ const (
 )
 
 const (
-	jd2mjd  = 2400000.5
-	jdByMil = 36525.0
+	deltaModJD  = 2400000.5
+	deltaCnesJD = 2433282.5
+	jdByMil     = 36525.0
 )
 
 const Axis = 3
 
 func gstTime(t time.Time) float64 {
-	_, _, cjd := mjdTime(t)
+	jd, _, _ := mjdTime(t)
+	cjd := (jd - 2415020.000) / jdByMil
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184*cjd + 0.092*cjd*cjd + (h + m + s)
@@ -56,12 +58,17 @@ func mjdTime(t time.Time) (float64, float64, float64) {
 	jd -= math.Trunc(3 * (math.Trunc(y+4900+c) / 100) / 4)
 	jd += f - 0.5
 
-	return jd, jd - jd2mjd, (jd - 2415020) / jdByMil
+	return jd, jd - deltaCnesJD, (jd - deltaCnesJD) / jdByMil
 }
 
-func MJD(t time.Time) float64 {
+func MJD50(t time.Time) float64 {
 	_, jd, _ := mjdTime(t)
 	return jd
+}
+
+func MJD70(t time.Time) float64 {
+	jd, _, _ := mjdTime(t)
+	return jd - deltaModJD
 }
 
 func ConvertTEME(t time.Time, teme []float64) (float64, float64, float64) {
@@ -107,7 +114,7 @@ func sunPosition(ws []float64) [][]float64 {
 		jd := ws[i]
 		// jd, _, _ := mjdTime(ws[i])
 		cjd := (jd - 2451545.0) / jdByMil
-		m := 357.5256 + 35999.049 * cjd
+		m := 357.5256 + 35999.049*cjd
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
 		distance := (149.619 - (2.499 * math.Cos(m/180*math.Pi)) - (0.021 * math.Cos(2*m/180*math.Pi))) * math.Pow10(9)
 

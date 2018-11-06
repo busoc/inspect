@@ -81,9 +81,10 @@ func main() {
 	interval := flag.Duration("i", time.Minute, "time interval")
 	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
 	teme := flag.Bool("k", false, "keep TEME coordonates")
+	round := flag.Bool("360", false, "round")
 	flag.Parse()
 
-	var write func(io.Writer, bool, <-chan *celest.Result) error
+	var write func(io.Writer, bool, bool, <-chan *celest.Result) error
 	switch strings.ToLower(*format) {
 	case "csv":
 		write = writeCSV
@@ -141,12 +142,12 @@ func main() {
 	case err != nil && *file != "":
 		log.Fatalln(err)
 	}
-	if err := write(w, *teme, ps); err != nil {
+	if err := write(w, *teme, *round, ps); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func writeCSV(w io.Writer, teme bool, ps <-chan *celest.Result) error {
+func writeCSV(w io.Writer, teme, _ bool, ps <-chan *celest.Result) error {
 	div := 1.0
 	if !teme {
 		div = 1000
@@ -156,7 +157,7 @@ func writeCSV(w io.Writer, teme bool, ps <-chan *celest.Result) error {
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
 		for _, p := range r.Points {
-			jd := celest.MJD(p.When)
+			jd := celest.MJD70(p.When)
 			var saa, eclipse int
 			if p.Saa {
 				saa++
@@ -183,7 +184,7 @@ func writeCSV(w io.Writer, teme bool, ps <-chan *celest.Result) error {
 	return ws.Error()
 }
 
-func writePipe(w io.Writer, teme bool, ps <-chan *celest.Result) error {
+func writePipe(w io.Writer, teme, round bool, ps <-chan *celest.Result) error {
 	div := 1.0
 	if !teme {
 		div = 1000
@@ -199,7 +200,10 @@ func writePipe(w io.Writer, teme bool, ps <-chan *celest.Result) error {
 			if p.Total {
 				eclipse++
 			}
-			jd := celest.MJD(p.When)
+			jd := celest.MJD50(p.When)
+			if round {
+				p.Lon += 360
+			}
 			logger.Printf(row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, p.Lat, p.Lon, eclipse, saa)
 		}
 	}

@@ -2,9 +2,9 @@ package celest
 
 import (
 	"fmt"
+	_ "log"
 	"math"
 	"time"
-	_ "log"
 
 	"github.com/busoc/celest/sgp"
 )
@@ -107,7 +107,7 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
 	epoch := els.GetJdsatepoch() + els.GetJdsatepochF()
-	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch-2433281.5, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
+	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch-deltaCnesJD, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
 	var (
