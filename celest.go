@@ -37,7 +37,7 @@ const Axis = 3
 
 func gstTime(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
-	cjd := (jd-2415020.000)/jdByMil
+	cjd := (jd-2451545.0)/jdByMil
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184*cjd + 0.092*cjd*cjd + (h + m + s)
@@ -89,7 +89,6 @@ func ConvertECEF(rs []float64) (float64, float64, float64) {
 
 	lat := math.Asin(rs[2]/norm) / math.Pi * 180
 	lon := math.Atan2(rs[1], rs[0]) / math.Pi * 180
-
 	return lat, lon, norm - earthRadius
 }
 

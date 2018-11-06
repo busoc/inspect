@@ -106,9 +106,15 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 	epoch := els.GetJdsatepoch() + els.GetJdsatepochF()
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
-	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
+	if ok := sgp.Sgp4init(wg84, 'i', int(els.GetNumber()), epoch, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
+
+	log.Printf("perigee: %12f", els.GetPerigee())
+	log.Printf("bstar: %12f", els.GetBstar())
+	log.Printf("excentricity: %12f", els.GetExcentricity())
+	log.Printf("inclination: %12f", els.GetInclination())
+	log.Printf("motion: %12f", els.GetMotion())
 
 	log.Printf("%+v", e)
 
@@ -241,7 +247,7 @@ func scanLine2(r string, e *Element) error {
 	}
 	e.Inclination = r2.Inclination * deg2rad
 	e.Ascension = r2.Ascension * deg2rad
-	e.Excentricity = r2.Excentricity / 1000000
+	e.Excentricity = r2.Excentricity / 10000000
 	e.Perigee = r2.Perigee * deg2rad
 	e.Anomaly = r2.Anomaly * deg2rad
 	e.Motion = r2.Motion / xpdotp
