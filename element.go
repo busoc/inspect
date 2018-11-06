@@ -2,7 +2,7 @@ package celest
 
 import (
 	"fmt"
-	_ "log"
+	"log"
 	"math"
 	"time"
 
@@ -103,16 +103,17 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 	els.SetAnomaly(e.Anomaly)
 	els.SetMotion(e.Motion)
 	els.SetAscension(e.Ascension)
-
+	epoch := els.GetJdsatepoch() + els.GetJdsatepochF()
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
-	epoch := els.GetJdsatepoch() + els.GetJdsatepochF()
-	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch-deltaCnesJD, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
+	if ok := sgp.Sgp4init(wg84, 'a', int(els.GetNumber()), epoch, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
+
+	log.Printf("%+v", e)
+
 	var (
 		ts []*Point
-		// ws []time.Time
 		js []float64
 		es [][]float64
 	)
@@ -136,7 +137,8 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 		}
 
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
-		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), 0, time.UTC)
+		cs, ns := math.Modf(seconds)
+		w := time.Date(year, time.Month(month), day, hour, min, int(cs), int(ns * 1e9), time.UTC)
 
 		var lat, lon, alt float64
 		if !teme {
