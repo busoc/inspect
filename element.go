@@ -117,9 +117,6 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 	delta := s.Seconds() / time.Minute.Seconds()
 	var when float64
 	for elapsed := time.Duration(0); elapsed < p; elapsed += s {
-		jd := els.GetJdsatepoch() + (when / minPerDays)
-		jdf := els.GetJdsatepochF()
-
 		ps, _, err := sgp.SGP4(els, when)
 		if err != nil {
 			return nil, err
@@ -129,11 +126,13 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 			year, month, day, hour, min int
 			seconds                     float64
 		)
+		jd := els.GetJdsatepoch() + (when / minPerDays)
+		jdf := els.GetJdsatepochF()
+
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
 		ns := jdf * math.Pow10(9)
 		w := time.Date(year, time.Month(month), day, hour, min, int(seconds), int(ns), time.UTC)
 
-		// fmt.Printf("%18.5f | %18.5f | %18.5f\n", ps[2], ps[0], ps[1])
 		var lat, lon, alt float64
 		if !teme {
 			lat, lon, alt = ConvertTEME(w, ps)

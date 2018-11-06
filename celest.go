@@ -3,7 +3,6 @@ package celest
 import (
 	"math"
 	"time"
-	_ "log"
 )
 
 const (
@@ -39,7 +38,7 @@ func gstTime(t time.Time) float64 {
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184*cjd + 0.092*cjd*cjd + (h + m + s)
-	gst := gha * 360.0 / secPerDays
+	gst := gha * (360.0 / secPerDays)
 	gst -= math.Floor(gst/360.0) * 360.0
 
 	return gst / 180.0 * math.Pi
@@ -109,9 +108,9 @@ func sunPosition(ws []time.Time) [][]float64 {
 	for i := range ws {
 		jd, _, _ := mjdTime(ws[i])
 		cjd := (jd - 2451545.0) / jdByMil
-		m := 357.5256 + (35999.049 * cjd)
-		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/rad2deg)) + (72 / secPerHours * math.Sin(2*m/rad2deg))
-		distance := (149.619 - (2.499 * math.Cos(m/rad2deg)) - (0.021 * math.Cos(2*m/rad2deg))) * math.Pow10(9)
+		m := 357.5256 + 35999.049 * cjd
+		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
+		distance := (149.619 - (2.499 * math.Cos(m/180*math.Pi)) - (0.021 * math.Cos(2*m/180*math.Pi))) * math.Pow10(9)
 
 		lat := distance * math.Cos(ecliptic/180*math.Pi)
 		lon := distance * math.Sin(ecliptic/180*math.Pi) * math.Cos(epsilon)
