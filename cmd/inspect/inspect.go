@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -82,9 +83,10 @@ func main() {
 	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
 	teme := flag.Bool("k", false, "keep TEME coordonates")
 	round := flag.Bool("360", false, "round")
+	dms := flag.Bool("dms", false, "dms")
 	flag.Parse()
 
-	var write func(io.Writer, bool, bool, <-chan *celest.Result) error
+	var write func(io.Writer, bool, bool, bool, <-chan *celest.Result) error
 	switch strings.ToLower(*format) {
 	case "csv":
 		write = writeCSV
@@ -142,12 +144,12 @@ func main() {
 	case err != nil && *file != "":
 		log.Fatalln(err)
 	}
-	if err := write(w, *teme, *round, ps); err != nil {
+	if err := write(w, *teme, *round, *dms, ps); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-func writeCSV(w io.Writer, teme, _ bool, ps <-chan *celest.Result) error {
+func writeCSV(w io.Writer, teme, _, _ bool, ps <-chan *celest.Result) error {
 	div := 1.0
 	if !teme {
 		div = 1000
@@ -184,12 +186,17 @@ func writeCSV(w io.Writer, teme, _ bool, ps <-chan *celest.Result) error {
 	return ws.Error()
 }
 
-func writePipe(w io.Writer, teme, round bool, ps <-chan *celest.Result) error {
+func writePipe(w io.Writer, teme, round, dms bool, ps <-chan *celest.Result) error {
 	div := 1.0
 	if !teme {
 		div = 1000
 	}
-	const row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
+	var row string
+	if dms {
+		row = "%s | %.6f | %18.5f | %s | %s | %d | %d"
+	} else {
+		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
+	}
 	logger := log.New(w, "", 0)
 	for r := range ps {
 		for _, p := range r.Points {
@@ -204,8 +211,33 @@ func writePipe(w io.Writer, teme, round bool, ps <-chan *celest.Result) error {
 			if round && !teme {
 				p.Lon += 360
 			}
-			logger.Printf(row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, p.Lat, p.Lon, eclipse, saa)
+			var lat, lon interface{}
+			if dms {
+				lat, lon = toDMS(p.Lat, "SN"), toDMS(p.Lon, "EW")
+			} else {
+				lat, lon = p.Lat, p.Lon
+			}
+			logger.Printf(row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, lat, lon, eclipse, saa)
 		}
 	}
 	return nil
+}
+
+func toDMS(v float64, dir string) string {
+	var deg, min, sec, rest float64
+	deg, rest = math.Modf(v)
+	min, sec = math.Modf(rest*60)
+
+	switch {
+	case dir == "SN" && deg < 0:
+		dir = "S"
+	case dir == "SN" && deg >= 0:
+		dir = "N"
+	case dir == "EW" && deg < 0:
+		dir = "W"
+	case dir == "EW" && deg >= 0:
+		dir = "E"
+	}
+
+	return fmt.Sprintf("%3d° %02d' %7.4f'' %s", int(math.Abs(deg)), int(math.Abs(min)), math.Abs(sec*60), dir)
 }
