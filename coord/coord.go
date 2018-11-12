@@ -13,12 +13,12 @@ const (
   earthRadius = 6378.1363
 )
 
-func Geodetic(x, y, z float64) (float64, float64, float64) {
+func GeodeticFromECEF(x, y, z float64) (float64, float64, float64) {
   lat, lon, alt := ecef2Geodetic(x, y, z)
   return lat*rad2deg, lon * rad2deg, alt
 }
 
-func Geocentric(x, y, z float64) (float64, float64, float64) {
+func GeocentricFromECEF(x, y, z float64) (float64, float64, float64) {
   lat, lon, alt := ecef2Geodetic(x, y, z)
   return math.Atan((1-eex)*math.Tan(lat))*rad2deg, lon * rad2deg, alt
 }

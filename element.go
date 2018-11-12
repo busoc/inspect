@@ -109,16 +109,6 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
 	}
 
-	// log.Printf("bstar (bstar)      : %12g", els.GetBstar())
-	// log.Printf("inclination (inclo): %12g", els.GetInclination())
-	// log.Printf("ascension (nodeo)  : %12g", els.GetAscension())
-	// log.Printf("excentricity (ecco): %12g", els.GetExcentricity())
-	// log.Printf("perigee (argpo)    : %12g", els.GetPerigee())
-	// log.Printf("anomaly (mo)       : %12g", els.GetAnomaly())
-	// log.Printf("motion (??)        : %12g", els.GetMotion())
-	//
-	// log.Printf("%+v", e)
-
 	var (
 		ts []*Point
 		js []float64

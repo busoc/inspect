@@ -30,14 +30,14 @@ const (
 const (
 	deltaModJD  = 2400000.5
 	deltaCnesJD = 2433282.5
-	jdByMil     = 36525.0
+	jdByMil = 36525.0
 )
 
 const Axis = 3
 
 func gstTime(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
-	cjd := (jd - 2415020.0) / jdByMil
+	cjd := (jd-2415020.0)/jdByMil
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184*cjd + 0.092*cjd*cjd + (h + m + s)
@@ -112,7 +112,7 @@ func sunPosition(ws []float64) [][]float64 {
 	ps := make([][]float64, len(ws))
 	for i := range ws {
 		cjd := (ws[i] - 2451545.0) / jdByMil
-		m := 357.5256 + 35999.049*cjd
+		m := 357.5256 + 35999.049 * cjd
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
 		distance := (149.619 - (2.499 * math.Cos(m/180*math.Pi)) - (0.021 * math.Cos(2*m/180*math.Pi))) * math.Pow10(9)
 
