@@ -226,7 +226,7 @@ func writePipe(w io.Writer, teme, round, dms bool, ps <-chan *celest.Result) err
 func toDMS(v float64, dir string) string {
 	var deg, min, sec, rest float64
 	deg, rest = math.Modf(v)
-	min, sec = math.Modf(rest*60)
+	min, sec = math.Modf(rest * 60)
 
 	switch {
 	case dir == "SN" && deg < 0:

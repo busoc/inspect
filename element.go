@@ -145,7 +145,7 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 
 		sgp.Invjday(jd, jdf, &year, &month, &day, &hour, &min, &seconds)
 		cs, ns := math.Modf(seconds)
-		w := time.Date(year, time.Month(month), day, hour, min, int(cs), int(ns * 1e9), time.UTC)
+		w := time.Date(year, time.Month(month), day, hour, min, int(cs), int(ns*1e9), time.UTC)
 
 		var lat, lon, alt float64
 		if !teme {
