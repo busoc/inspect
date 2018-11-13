@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/busoc/celest/coord"
 	"github.com/busoc/celest/sgp"
+	"github.com/busoc/celest/coord"
 )
 
 const (
@@ -169,7 +169,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 		// TODO: compute eclipse on/off when knowing position of satellite
 		es = append(es, ps)
 		if saa != nil {
-			t.Saa = saa.Contains(t)
+			t.Saa = saa.Contains(t.Geodetic())
 		}
 		ts = append(ts, &t)
 		js = append(js, jd+jdf)
