@@ -2,6 +2,7 @@ package coord
 
 import (
 	"math"
+	"time"
 )
 
 const Tolerance = 0.00000001
@@ -16,6 +17,10 @@ const (
 	flattening  = 0.003352813178
 	earthRadius = 6378.1363
 )
+
+func Teme2ECEF(w time.Time, x, y, z float64) (float64, float64, float64) {
+	return 0, 0, 0
+}
 
 func GeodeticFromECEF(x, y, z float64) (float64, float64, float64) {
 	lat, lon, alt := ecef2Geodetic(x, y, z)
@@ -38,8 +43,9 @@ func GeodeticToECEF(lat, lon, alt float64) (float64, float64, float64) {
 }
 
 func GeocentricFromECEF(x, y, z float64) (float64, float64, float64) {
-	lat, lon, alt := ecef2Geodetic(x, y, z)
-	return math.Atan((1-eex)*math.Tan(lat)) * rad2deg, lon * rad2deg, alt
+	lat, lon, _ := ecef2Geodetic(x, y, z)
+	norm := math.Sqrt(x*x + y*y + z*z)
+	return math.Atan((1-eex)*math.Tan(lat)) * rad2deg, lon * rad2deg, earthRadius - norm
 }
 
 func ecef2Geodetic(x, y, z float64) (float64, float64, float64) {

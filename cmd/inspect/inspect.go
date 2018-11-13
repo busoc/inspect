@@ -2,17 +2,13 @@ package main
 
 import (
 	"crypto/md5"
-	"encoding/csv"
 	"flag"
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/busoc/celest"
@@ -43,26 +39,6 @@ const (
 	BuildTime = "2018-10-16 11:10:00"
 )
 
-type rect struct {
-	North float64
-	South float64
-	West  float64
-	East  float64
-}
-
-func (r *rect) Contains(p celest.Point) bool {
-	return (p.Lat > r.South && p.Lat < r.North) && (p.Lon > r.West && p.Lon < r.East)
-}
-
-func (r *rect) Set(s string) error {
-	_, err := fmt.Sscanf(s, "%f:%f:%f:%f", &r.North, &r.East, &r.South, &r.West)
-	return err
-}
-
-func (r *rect) String() string {
-	return fmt.Sprintf("rect(%.2fN:%.2fE:%.2fS:%.2fW)", r.North, r.East, r.South, r.West)
-}
-
 func init() {
 	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
 }
@@ -74,27 +50,18 @@ func main() {
 		East:  SAALonMax,
 		West:  SAALonMin,
 	}
+	var p printer
 	flag.Var(&saa, "r", "saa area")
 	copydir := flag.String("t", os.TempDir(), "temp dir")
-	format := flag.String("f", "pipe", "output format")
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
 	interval := flag.Duration("i", time.Minute, "time interval")
 	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
-	teme := flag.Bool("k", false, "keep TEME coordonates")
-	round := flag.Bool("360", false, "round")
-	dms := flag.Bool("dms", false, "dms")
+	flag.StringVar(&p.Format, "f", "", "format")
+	flag.StringVar(&p.Syst, "c", "", "system")
+	flag.BoolVar(&p.Round, "360", false, "round")
+	flag.BoolVar(&p.DMS, "dms", false, "dms")
 	flag.Parse()
-
-	var write func(io.Writer, bool, bool, bool, <-chan *celest.Result) error
-	switch strings.ToLower(*format) {
-	case "csv":
-		write = writeCSV
-	case "", "pipe":
-		write = writePipe
-	default:
-		log.Fatalln("unsupported output format: %s", *format)
-	}
 
 	var t celest.Trajectory
 	digest := md5.New()
@@ -132,7 +99,7 @@ func main() {
 		}
 	}
 
-	ps, err := t.Predict(*period, *interval, *teme, &saa)
+	rs, err := t.Predict(*period, *interval, &saa)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -144,100 +111,7 @@ func main() {
 	case err != nil && *file != "":
 		log.Fatalln(err)
 	}
-	if err := write(w, *teme, *round, *dms, ps); err != nil {
+	if err := p.Print(w, rs); err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func writeCSV(w io.Writer, teme, _, _ bool, ps <-chan *celest.Result) error {
-	div := 1.0
-	if !teme {
-		div = 1000
-	}
-	ws := csv.NewWriter(w)
-	for r := range ps {
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
-		for _, p := range r.Points {
-			jd := celest.MJD70(p.When)
-			var saa, eclipse int
-			if p.Saa {
-				saa++
-			}
-			if p.Total {
-				eclipse++
-			}
-			rs := []string{
-				p.When.Format("2006-01-02T15:04:05.000000"),
-				strconv.FormatFloat(jd, 'f', -1, 64),
-				strconv.FormatFloat(p.Alt/div, 'f', -1, 64),
-				strconv.FormatFloat(p.Lat, 'f', -1, 64),
-				strconv.FormatFloat(p.Lon, 'f', -1, 64),
-				strconv.Itoa(eclipse),
-				strconv.Itoa(saa),
-				"-",
-			}
-			if err := ws.Write(rs); err != nil {
-				return err
-			}
-		}
-	}
-	ws.Flush()
-	return ws.Error()
-}
-
-func writePipe(w io.Writer, teme, round, dms bool, ps <-chan *celest.Result) error {
-	div := 1.0
-	if !teme {
-		div = 1000
-	}
-	var row string
-	if dms {
-		row = "%s | %.6f | %18.5f | %s | %s | %d | %d"
-	} else {
-		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
-	}
-	logger := log.New(w, "", 0)
-	for r := range ps {
-		for _, p := range r.Points {
-			var saa, eclipse int
-			if p.Saa {
-				saa++
-			}
-			if p.Total {
-				eclipse++
-			}
-			jd := celest.MJD50(p.When)
-			if round && !teme {
-				p.Lon += 360
-			}
-			var lat, lon interface{}
-			if dms {
-				lat, lon = toDMS(p.Lat, "SN"), toDMS(p.Lon, "EW")
-			} else {
-				lat, lon = p.Lat, p.Lon
-			}
-			logger.Printf(row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, lat, lon, eclipse, saa)
-		}
-	}
-	return nil
-}
-
-func toDMS(v float64, dir string) string {
-	var deg, min, sec, rest float64
-	deg, rest = math.Modf(v)
-	min, sec = math.Modf(rest * 60)
-
-	switch {
-	case dir == "SN" && deg < 0:
-		dir = "S"
-	case dir == "SN" && deg >= 0:
-		dir = "N"
-	case dir == "EW" && deg < 0:
-		dir = "W"
-	case dir == "EW" && deg >= 0:
-		dir = "E"
-	}
-
-	return fmt.Sprintf("%3d° %02d' %7.4f'' %s", int(math.Abs(deg)), int(math.Abs(min)), math.Abs(sec*60), dir)
 }

@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/busoc/celest/coord"
 	"github.com/busoc/celest/sgp"
 )
 
@@ -31,6 +32,27 @@ type Point struct {
 	Saa     bool
 	Partial bool
 	Total   bool
+}
+
+func (p Point) Geocentric() Point {
+	n := p
+	n.Lat, n.Lon, n.Alt = coord.GeocentricFromECEF(p.toECEF())
+	return n
+}
+
+func (p Point) Geodetic() Point {
+	n := p
+	n.Lat, n.Lon, n.Alt = coord.GeodeticFromECEF(p.toECEF())
+	return n
+}
+
+func (p Point) toECEF() (float64, float64, float64) {
+	vs := []float64{p.Lat, p.Lon, p.Alt}
+	for i := range vs {
+		vs[i] *= 1000
+	}
+	cs := ecefCoordinates(gstTime(p.When), vs)
+	return cs[0], cs[1], cs[2]
 }
 
 type Shape interface {
@@ -81,7 +103,7 @@ func NewElement(row1, row2 string) (*Element, error) {
 	return &e, nil
 }
 
-func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, error) {
+func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	els := sgp.NewElsetrec()
 	defer sgp.DeleteElsetrec(els)
 
@@ -137,23 +159,18 @@ func (e Element) Predict(p, s time.Duration, teme bool, saa Shape) (*Result, err
 		cs, ns := math.Modf(seconds)
 		w := time.Date(year, time.Month(month), day, hour, min, int(cs), int(ns*1e9), time.UTC)
 
-		var lat, lon, alt float64
-		if !teme {
-			lat, lon, alt = ConvertTEME(w, ps)
-		} else {
-			lat, lon, alt = ps[0], ps[1], ps[2]
+		t := Point{
+			Lat:  ps[0],
+			Lon:  ps[1],
+			Alt:  ps[2],
+			When: w,
 		}
+
 		for i := range ps {
 			ps[i] *= 1000
 		}
 		// TODO: compute eclipse on/off when knowing position of satellite
 		es = append(es, ps)
-		t := Point{
-			Lat:  lat,
-			Lon:  lon,
-			Alt:  alt,
-			When: w,
-		}
 		if saa != nil {
 			t.Saa = saa.Contains(t)
 		}
