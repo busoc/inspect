@@ -21,22 +21,12 @@ const (
 	SAALonMax = 40.0
 )
 
-const (
-	Y2000       = 2000
-	Y1900       = 1900
-	YPivot      = 57
-	secPerMins  = 60.0
-	secPerHours = secPerMins * secPerMins
-	secPerDays  = secPerHours * 24
-	minPerDays  = 1440.0
-)
-
 const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "0.0.1"
-	BuildTime = "2018-10-16 11:10:00"
+	Version   = "0.0.1-dev"
+	BuildTime = "2018-11-13 09:21:00"
 )
 
 func init() {
