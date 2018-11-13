@@ -53,13 +53,16 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
 		for _, p := range r.Points {
 			p = pt.transform(p)
-			jd := celest.MJD70(p.When)
+			jd := celest.MJD50(p.When)
 			var saa, eclipse int
 			if p.Saa {
 				saa++
 			}
 			if p.Total {
 				eclipse++
+			}
+			if !pt.rawFormat() && pt.Round {
+				p.Lon = math.Mod(p.Lon+360, 360)
 			}
 			rs := []string{
 				p.When.Format("2006-01-02T15:04:05.000000"),

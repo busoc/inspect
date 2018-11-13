@@ -54,6 +54,10 @@ func main() {
 	flag.BoolVar(&p.DMS, "dms", false, "dms")
 	flag.Parse()
 
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(2)
+	}
 	t, err := fetchTLE(flag.Args(), *copydir, *sid)
 	if err != nil {
 		log.Fatalln(err)
