@@ -48,9 +48,6 @@ func (p Point) Geodetic() Point {
 
 func (p Point) toECEF() (float64, float64, float64) {
 	vs := []float64{p.Lat, p.Lon, p.Alt}
-	for i := range vs {
-		vs[i] *= 1000
-	}
 	cs := ecefCoordinates(gstTime(p.When), vs)
 	return cs[0], cs[1], cs[2]
 }

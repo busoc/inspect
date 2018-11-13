@@ -47,11 +47,6 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 }
 
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
-	div := 1.0
-	if !pt.rawFormat() {
-		div = 1000
-	}
-
 	ws := csv.NewWriter(w)
 	for r := range ps {
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
@@ -69,7 +64,7 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
 			rs := []string{
 				p.When.Format("2006-01-02T15:04:05.000000"),
 				strconv.FormatFloat(jd, 'f', -1, 64),
-				strconv.FormatFloat(p.Alt/div, 'f', -1, 64),
+				strconv.FormatFloat(p.Alt, 'f', -1, 64),
 				strconv.FormatFloat(p.Lat, 'f', -1, 64),
 				strconv.FormatFloat(p.Lon, 'f', -1, 64),
 				strconv.Itoa(eclipse),
@@ -86,10 +81,6 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
 }
 
 func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
-	div := 1.0
-	if !pt.rawFormat() {
-		div = 1000
-	}
 	var row string
 	if !pt.rawFormat() && pt.DMS {
 		row = "%s | %.6f | %18.5f | %s | %s | %d | %d"
@@ -111,12 +102,12 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
 				p.Lon = math.Mod(p.Lon+360, 360)
 			}
 			var lat, lon interface{}
-			if !pt.rawFormat() && pt.Round {
+			if !pt.rawFormat() && pt.DMS {
 				lat, lon = toDMS(p.Lat, "SN"), toDMS(p.Lon, "EW")
 			} else {
 				lat, lon = p.Lat, p.Lon
 			}
-			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt/div, lat, lon, eclipse, saa)
+			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt, lat, lon, eclipse, saa)
 			fmt.Fprintln(w)
 		}
 	}

@@ -45,7 +45,7 @@ func GeodeticToECEF(lat, lon, alt float64) (float64, float64, float64) {
 func GeocentricFromECEF(x, y, z float64) (float64, float64, float64) {
 	lat, lon, _ := ecef2Geodetic(x, y, z)
 	norm := math.Sqrt(x*x + y*y + z*z)
-	return math.Atan((1-eex)*math.Tan(lat)) * rad2deg, lon * rad2deg, earthRadius - norm
+	return math.Atan((1-eex)*math.Tan(lat)) * rad2deg, lon * rad2deg, norm - earthRadius
 }
 
 func ecef2Geodetic(x, y, z float64) (float64, float64, float64) {
