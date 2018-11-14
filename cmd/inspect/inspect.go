@@ -25,8 +25,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "0.0.1-dev"
-	BuildTime = "2018-11-13 09:21:00"
+	Version   = "0.1.0-RC1"
+	BuildTime = "2018-11-14 08:11:00"
 )
 
 func init() {
@@ -43,6 +43,7 @@ func main() {
 
 	var p printer
 	flag.Var(&saa, "r", "saa area")
+	version := flag.Bool("version", false, "print version and exits")
 	copydir := flag.String("t", os.TempDir(), "temp dir")
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
@@ -53,6 +54,12 @@ func main() {
 	flag.BoolVar(&p.Round, "360", false, "round")
 	flag.BoolVar(&p.DMS, "dms", false, "dms")
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("%s %s (%s)", Program, Version, BuildTime)
+		fmt.Println()
+		os.Exit(0)
+	}
 
 	if flag.NArg() == 0 {
 		flag.Usage()
