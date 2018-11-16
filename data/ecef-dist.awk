@@ -3,7 +3,8 @@ BEGIN {
   excentricity = 0.006694385;
   flattening = 0.003352813178;
   deg2rad = 3.14159265 / 180.0;
-  row = "%12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.5fkm\n"
+  row = "%5d | %12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.5fkm\n"
+  avg = 0
 } {
   alt = $3;
   lat = $4 * deg2rad;
@@ -28,6 +29,11 @@ BEGIN {
   z1 = ((n*(1-excentricity) + alt) * sin (lat));
 
   diff = (x1-x0) ^ 2 + (y1-y0) ^ 2 + (z1-z0) ^ 2
+  dist = sqrt(diff)
+  avg += dist
 
-  printf(row, $2, $3, $4, $5, $9, $10, $11, $12, sqrt(diff))
+  printf(row, NR, $2, $3, $4, $5, $9, $10, $11, $12, dist)
+}
+END {
+  printf("average distance: %12.2fkm\n", avg/NR)
 }
