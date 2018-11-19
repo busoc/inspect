@@ -44,20 +44,20 @@ satellite with the same TLE.
 
 Coordinate systems/frames:
 
-inspect can give the position of a satellite in three different way:
+inspect can give the position of a satellite in three different way (mutually
+exclusive):
 
-- geocentric: the latitude, longitude and altitude are given from the centre
-of the earth. The values are given in degrees for the latitude and longitude,
-and kilometer for the altitude. These values are derived from the geodetic values.
+- geocentric: the latitude, longitude and altitude are calculated from the centre
+of the earth.
 
-- geodetic: the latitude, longitude and altitude are given above an ellipsoidal
-surface of the earth. The values are given in degrees for the latitude and
-longitude, and kilometer for the altitude.
+- geodetic: the latitude, longitude and altitude are calculated above an ellipsoidal
+surface of the earth.
 
-- teme/eci: the latitude, longitude and altitude are given from the centre of the
-earth and are given in kilometer. The main difference is that in this reference
-system, the values are computed in an inertial system that do not rotate with
-the earth. These values are the one given by the SGP4 propagator used by inspect.
+- teme/eci: the latitude, longitude and altitude are calculated from the centre of the
+earth. The main difference is that, in this frame, the values are computed in an
+inertial system that do not rotate with the earth. These values are the outcome
+of the SGP4 propagator used by inspect and are used the computed the latitude,
+longitude in the geodetic or geocentric frame.
 
 TLE/Input format:
 
