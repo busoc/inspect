@@ -46,15 +46,15 @@ Coordinate systems/frames:
 
 inspect can give the position of a satellite in three different way:
 
-* geocentric: the latitude, longitude and altitude are given from the centre
+- geocentric: the latitude, longitude and altitude are given from the centre
 of the earth. The values are given in degrees for the latitude and longitude,
 and kilometer for the altitude. These values are derived from the geodetic values.
 
-* geodetic: the latitude, longitude and altitude are given above an ellipsoidal
+- geodetic: the latitude, longitude and altitude are given above an ellipsoidal
 surface of the earth. The values are given in degrees for the latitude and
 longitude, and kilometer for the altitude.
 
-* teme/eci: the latitude, longitude and altitude are given from the centre of the
+- teme/eci: the latitude, longitude and altitude are given from the centre of the
 earth and are given in kilometer. The main difference is that in this reference
 system, the values are computed in an inertial system that do not rotate with
 the earth. These values are the one given by the SGP4 propagator used by inspect.
@@ -72,27 +72,27 @@ Output format:
 
 the output of inspect consists of a tabulated "file". The columns in the result are:
 
-* datetime (YYYY-mm-dd HH:MM:SS.ssssss)
-* modified julian day
-* altitude (kilometer)
-* latitude (degree or DMS)
-* longitude (degree or DMS)
-* eclipse (1: night, 0: day)
-* crossing (1: crossing, 0: no crossing)
-* TLE epoch (not printed when output is pipe separated)
+- datetime (YYYY-mm-dd HH:MM:SS.ssssss)
+- modified julian day
+- altitude (kilometer)
+- latitude (degree or DMS)
+- longitude (degree or DMS)
+- eclipse (1: night, 0: day)
+- crossing (1: crossing, 0: no crossing)
+- TLE epoch (not printed when output is pipe separated)
 
 Options:
 
-	-c   COORD   coordinate system used (geocentric, geodetic, teme/eci)
-	-d   TIME    TIME over which calculate the predicted trajectory
-	-f   FORMAT  print trajectory in FORMAT (csv, pipe, json, xml)
-	-i   TIME    TIME between two points on the predicted trajectory
+  -c   COORD   coordinate system used (geocentric, geodetic, teme/eci)
+  -d   TIME    TIME over which calculate the predicted trajectory
+  -f   FORMAT  print predicted trajectory in FORMAT (csv, pipe, json, xml)
+  -i   TIME    TIME between two points on the predicted trajectory
   -r   AREA    check if the predicted trajectory crossed the given AREA
-	-s   SID     satellite identifier
+  -s   SID     satellite identifier
   -t   DIR     store a TLE fetched from a remote server in DIR
-  -w   FILE    print trajectory in FILE
+  -w   FILE    write predicted trajectory in FILE (default to stdout)
   -360         longitude are given in range of [0:360[ instead of ]-180:180[
-  -dms         transform latitude and longitude to DD°MIN'SEC'' format
+  -dms         convert latitude and longitude to DD°MIN'SEC'' format
 
 Examples:
 
