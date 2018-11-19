@@ -6,6 +6,13 @@ import (
 	"github.com/busoc/celest"
 )
 
+var SAA = rect{
+	North: SAALatMax,
+	South: SAALatMin,
+	East:  SAALonMax,
+	West:  SAALonMin,
+}
+
 type rect struct {
 	North float64
 	South float64

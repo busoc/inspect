@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/busoc/celest"
+	"github.com/midbel/toml"
 )
 
 const (
@@ -111,6 +112,22 @@ $ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 $ inspect -r 51.0:46.0:49.0:50 -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 `
 
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) Set(s string) error {
+	v, err := time.ParseDuration(s)
+	if err == nil {
+		d.Duration = v
+	}
+	return err
+}
+
+func (d *Duration) String() string {
+	return d.Duration.String()
+}
+
 func init() {
 	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
 	flag.Usage = func() {
@@ -119,48 +136,86 @@ func init() {
 	}
 }
 
+type Settings struct {
+	Area     rect     `toml:"area"`
+	File     string   `toml:"file"`
+	Source   string   `toml:"tle"`
+	Temp     string   `toml:"tmpdir"`
+	Sid      int      `toml:"satellite"`
+	Period   Duration `toml:"duration"`
+	Interval Duration `toml:"interval"`
+
+	Print printer `toml:"format"`
+}
+
+func (s *Settings) Update(f string) error {
+	r, err := os.Open(f)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	return toml.NewDecoder(r).Decode(s)
+}
+
 func main() {
-	saa := rect{
-		North: SAALatMax,
-		South: SAALatMin,
-		East:  SAALonMax,
-		West:  SAALonMin,
+	s := Settings{
+		Area:     SAA,
+		Temp:     os.TempDir(),
+		Sid:      DefaultSid,
+		Period:   Duration{time.Hour * 72},
+		Interval: Duration{time.Minute},
 	}
 
-	var p printer
-	flag.Var(&saa, "r", "saa area")
-	copydir := flag.String("t", os.TempDir(), "temp dir")
-	sid := flag.Int("s", DefaultSid, "satellite number")
-	period := flag.Duration("d", time.Hour*72, "time range")
-	interval := flag.Duration("i", time.Minute, "time interval")
-	file := flag.String("w", "", "write trajectory to file (stdout if not provided)")
-	flag.StringVar(&p.Format, "f", "", "format")
-	flag.StringVar(&p.Syst, "c", "", "system")
-	flag.BoolVar(&p.Round, "360", false, "round")
-	flag.BoolVar(&p.DMS, "dms", false, "dms")
+	flag.StringVar(&s.Print.Format, "f", "", "format")
+	flag.StringVar(&s.Print.Syst, "c", "", "system")
+	flag.BoolVar(&s.Print.Round, "360", false, "round")
+	flag.BoolVar(&s.Print.DMS, "dms", false, "dms")
+	flag.Var(&s.Area, "r", "saa area")
+	flag.StringVar(&s.Temp, "t", s.Temp, "temp dir")
+	flag.IntVar(&s.Sid, "s", s.Sid, "satellite number")
+	flag.Var(&s.Period, "d", "time range")
+	flag.Var(&s.Interval, "i", "time interval")
+	flag.StringVar(&s.File, "w", "", "write trajectory to file (stdout if not provided)")
+	config := flag.Bool("config", false, "use configuration file")
+	listen := flag.Bool("listen", false, "run a webserver")
 	flag.Parse()
 
 	if flag.NArg() == 0 {
 		flag.Usage()
-		os.Exit(2)
 	}
-	t, err := fetchTLE(flag.Args(), *copydir, *sid)
+
+	if *listen {
+		if err := http.ListenAndServe(flag.Arg(0), Handle(s)); err != nil {
+			log.Fatalln(err)
+		}
+	}
+
+	sources := flag.Args()
+	if *config {
+		if err := s.Update(flag.Arg(0)); err != nil {
+			log.Fatalln(err)
+		}
+		sources = []string{s.Source}
+	}
+
+	t, err := fetchTLE(sources, s.Temp, s.Sid)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	rs, err := t.Predict(*period, *interval, &saa)
+	rs, err := t.Predict(s.Period.Duration, s.Interval.Duration, &s.Area)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	var w io.Writer = os.Stdout
-	switch f, err := os.Create(*file); {
+	switch f, err := os.Create(s.File); {
 	case err == nil:
 		defer f.Close()
 		w = f
-	case err != nil && *file != "":
+	case err != nil && s.File != "":
 		log.Fatalln(err)
 	}
-	if err := p.Print(w, rs); err != nil {
+	if err := s.Print.Print(w, rs); err != nil {
 		log.Fatalln(err)
 	}
 }

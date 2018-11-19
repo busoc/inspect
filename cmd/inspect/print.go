@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/xml"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"math"
@@ -18,10 +18,10 @@ type encoder interface {
 }
 
 type printer struct {
-	Format string // csv or pipe
-	Syst   string // geodetic, geocentric, teme
-	DMS    bool   // convert to deg°min'sec'' NESW
-	Round  bool   //360
+	Format string `toml:"format"` // csv or pipe
+	Syst   string `toml:"frames"` // geodetic, geocentric, teme
+	DMS    bool   `toml:"toDMS"`  // convert to deg°min'sec'' NESW
+	Round  bool   `toml:"to360"`  //360
 }
 
 func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) error {
