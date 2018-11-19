@@ -77,13 +77,26 @@ func elementFromRequest(r *http.Request, s *Settings) (*celest.Element, error) {
 	}{Settings: s}
 
 	var err error
+
+	q := r.URL.Query()
+	if v := q.Get("period"); v != "" {
+		s.Period.Duration, err = time.ParseDuration(v)
+	}
+	if v := q.Get("interval"); v != "" {
+		s.Interval.Duration, err = time.ParseDuration(v)
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = nil
+	s.Print.Syst = q.Get("frames")
+
 	switch ct := r.Header.Get("content-type"); ct {
 	case "application/json":
 		err = json.NewDecoder(r.Body).Decode(&c)
 	case "application/xml":
 		err = xml.NewDecoder(r.Body).Decode(&c)
 	case "text/plain":
-		// rs := bufio.NewReader(r.Body)
 		vs := make([]string, 2)
 		rs := bufio.NewScanner(r.Body)
 		for i := 0; i < len(vs); i++ {
@@ -94,14 +107,6 @@ func elementFromRequest(r *http.Request, s *Settings) (*celest.Element, error) {
 			}
 		}
 		c.Row1, c.Row2 = vs[0], vs[1]
-		q := r.URL.Query()
-		if v := q.Get("period"); v != "" {
-			s.Period.Duration, err = time.ParseDuration(v)
-		}
-		if v := q.Get("interval"); v != "" {
-			s.Interval.Duration, err = time.ParseDuration(v)
-		}
-		s.Print.Syst = q.Get("frames")
 	default:
 		return nil, fmt.Errorf("unsupported content-type")
 	}
