@@ -35,6 +35,11 @@ const (
 
 const Axis = 3
 
+func gstTimeBis(jd float64) float64 {
+	cjd := (jd-2415020.0)/jdByMil
+	return 0
+}
+
 func gstTime(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
 	cjd := (jd-2415020.0)/jdByMil
@@ -54,9 +59,9 @@ func mjdTime(t time.Time) (float64, float64, float64) {
 	f := ((ms / math.Pow10(9)) + s + (i * secPerMins) + (h * secPerHours)) / secPerDays
 	c := math.Trunc((m - 14) / 12)
 
-	jd := d - 32075 + math.Trunc(1461*(y+4800+c)/4)
-	jd += math.Trunc(367 * (m - 2 - c*12) / 12)
-	jd -= math.Trunc(3 * (math.Trunc(y+4900+c) / 100) / 4)
+	jd := d - 32075 + math.Floor(1461*(y+4800+c)/4)
+	jd += math.Floor(367 * (m - 2 - c*12) / 12)
+	jd -= math.Floor(3 * (math.Floor(y+4900+c) / 100) / 4)
 	jd += f - 0.5
 
 	return jd, jd - deltaCnesJD, (jd - deltaCnesJD) / jdByMil

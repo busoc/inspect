@@ -34,6 +34,10 @@ type Point struct {
 	Total   bool `json:"eclipse" xml:"eclipse"`
 }
 
+func (p Point) MJD() float64 {
+	return p.Epoch - deltaCnesJD
+}
+
 func (p Point) Geocentric() Point {
 	n := p
 	n.Lat, n.Lon, n.Alt = coord.GeocentricFromECEF(p.toECEF())
@@ -48,7 +52,8 @@ func (p Point) Geodetic() Point {
 
 func (p Point) toECEF() (float64, float64, float64) {
 	vs := []float64{p.Lat, p.Lon, p.Alt}
-	cs := ecefCoordinates(gstTime(p.When), vs)
+	cs := ecefCoordinates(gstTimeBis(p.Epoch), vs)
+	// cs := ecefCoordinates(gstTime(p.When), vs)
 	return cs[0], cs[1], cs[2]
 }
 
@@ -161,6 +166,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 			Lon:  ps[1],
 			Alt:  ps[2],
 			When: w,
+			Epoch: jd+jdf,
 		}
 
 		for i := range ps {

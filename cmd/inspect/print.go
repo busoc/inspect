@@ -81,7 +81,6 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
 func (pt printer) printRow(ws *csv.Writer, r *celest.Result) error {
 	for _, p := range r.Points {
 		p = pt.transform(p)
-		jd := celest.MJD50(p.When)
 		var saa, eclipse int
 		if p.Saa {
 			saa++
@@ -94,7 +93,7 @@ func (pt printer) printRow(ws *csv.Writer, r *celest.Result) error {
 		}
 		rs := []string{
 			p.When.Format("2006-01-02T15:04:05.000000"),
-			strconv.FormatFloat(jd, 'f', -1, 64),
+			strconv.FormatFloat(p.MJD(), 'f', -1, 64),
 			strconv.FormatFloat(p.Alt, 'f', -1, 64),
 			strconv.FormatFloat(p.Lat, 'f', -1, 64),
 			strconv.FormatFloat(p.Lon, 'f', -1, 64),
@@ -127,7 +126,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
 			if p.Total {
 				eclipse++
 			}
-			jd := celest.MJD50(p.When)
+			// jd := celest.MJD50(p.When)
 			if !pt.rawFormat() && pt.Round {
 				p.Lon = math.Mod(p.Lon+360, 360)
 			}
@@ -137,7 +136,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
 			} else {
 				lat, lon = p.Lat, p.Lon
 			}
-			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), jd, p.Alt, lat, lon, eclipse, saa)
+			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), p.MJD(), p.Alt, lat, lon, eclipse, saa)
 			fmt.Fprintln(w)
 		}
 	}
