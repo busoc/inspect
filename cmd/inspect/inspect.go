@@ -25,12 +25,96 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "0.1.0-RC1"
-	BuildTime = "2018-11-14 08:11:00"
+	Version   = "0.0.1-dev"
+	BuildTime = "2018-11-19 09:00:00"
 )
+
+const helpText = `Satellite trajectory prediction tool with Eclipse and SAA crossing.
+
+inspect allows to calculate from a set of (locale or remote) TLE (two line elements
+set) a trajectory for a given satellite. To predict the path of a satellite, it
+use the SGP4 library written by D. Vallado in C++.
+
+The predicted trajectory given by inspect computes each point independantly of the
+previous. The consequence is that the results of inspect could be "quickly" different
+from other prediction tools that use a different method of predicting the trajectory
+from the same TLE and satellite.
+
+Coordinate systems/frames:
+
+inspect can give the position of a satellite in three different way:
+
+* geocentric: the latitude, longitude and altitude are given from the centre
+of the earth. The values are given in degrees for the latitude and longitude,
+and kilometer for the altitude. These values are derived from the geodetic values.
+
+* geodetic: the latitude, longitude and altitude are given above an ellipsoidal
+surface of the earth. The values are given in degrees for the latitude and
+longitude, and kilometer for the altitude.
+
+* teme/eci: the latitude, longitude and altitude are given from the centre of the
+earth and are given in kilometer. The main difference is that in this reference
+system, the values are computed in an inertial system that do not rotate with
+the earth. These values are the one given by the SGP4 propagator used by inspect.
+
+TLE/Input format:
+
+inspect can only support the following TLE format (the first line being optional.
+But if present should be 24 characters long)
+
+ISS (ZARYA)
+1 25544U 98067A   18304.35926896  .00001207  00000-0  25703-4 0  9995
+2 25544  51.6420  60.1332 0004268 356.0118  61.1534 15.53880871139693
+
+Output format:
+
+the output of inspect consists of a tabulated "file". The columns in the result are:
+
+* datetime (YYYY-mm-dd HH:MM:SS.ssssss)
+* modified julian day
+* altitude (kilometer)
+* latitude (degree or DMS)
+* longitude (degree or DMS)
+* eclipse (1: night, 0: day)
+* crossing (1: crossing, 0: no crossing)
+* TLE epoch (not printed when output is pipe separated)
+
+Options:
+
+  -r   AREA      check if the predicted trajectory crossed the given region
+  -t   DIR       directory where to store a TLE fetched from a remote server
+  -s   SID       satellite identifier
+  -d   DURATION  time over which calculate the predicted trajectory
+  -i   INTERVAL  time between two points on the predicted trajectory
+  -w   FILE      output file
+  -f   FORMAT    output format (csv, pipe, json, xml)
+  -c   COORD     coordinate system used (geocentric, geodetic, teme/eci)
+  -360           longitude are given in a range of [0:360[ instead of ]-180:180[
+  -dms           transform latitude and longitude to DD°MIN'SEC'' format
+
+Examples:
+
+# calcule the predicted trajectory on 24h for the default satellite from the latest
+# TLE available on celestrack
+$ inspect -d 24h -i 10s https://celestrak.com/NORAD/elements/stations.txt
+
+# calculate the predicted trajectory on 24h for the default satellite from a locale
+# TLE
+$ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
+
+# calculate the predicted trajectory on 24h for the default satellite with 1 minute
+# between two points of the path. The positions will be computed according to the
+# geodetic system and printed as DD°MM'SS'. Moreover, it will check if the satellite
+# cross a rectangle draw above a small town in Belgium.
+$ inspect -r 51.0:46.0:49.0:50 -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
+`
 
 func init() {
 	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, helpText)
+		os.Exit(2)
+	}
 }
 
 func main() {
@@ -43,7 +127,6 @@ func main() {
 
 	var p printer
 	flag.Var(&saa, "r", "saa area")
-	version := flag.Bool("version", false, "print version and exits")
 	copydir := flag.String("t", os.TempDir(), "temp dir")
 	sid := flag.Int("s", DefaultSid, "satellite number")
 	period := flag.Duration("d", time.Hour*72, "time range")
@@ -54,12 +137,6 @@ func main() {
 	flag.BoolVar(&p.Round, "360", false, "round")
 	flag.BoolVar(&p.DMS, "dms", false, "dms")
 	flag.Parse()
-
-	if *version {
-		fmt.Printf("%s %s (%s)", Program, Version, BuildTime)
-		fmt.Println()
-		os.Exit(0)
-	}
 
 	if flag.NArg() == 0 {
 		flag.Usage()
