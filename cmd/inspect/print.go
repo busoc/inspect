@@ -41,7 +41,7 @@ func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) error {
 
 func (pt printer) rawFormat() bool {
 	syst := strings.ToLower(pt.Syst)
-	return syst == "teme" || syst == "eci"
+	return syst  == "teme" || syst == "eci"
 }
 
 func (pt printer) transform(p *celest.Point) *celest.Point {
