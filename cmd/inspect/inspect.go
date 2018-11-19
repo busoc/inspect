@@ -31,6 +31,8 @@ const (
 
 const helpText = `Satellite trajectory prediction tool with Eclipse and SAA crossing.
 
+Usage: inspect [-c] [-d] [-i] [-f] [-r] [-s] [-t] [-w] [-360] [-dms] <tle,...>
+
 inspect allows to calculate from a set of (locale or remote) TLE (two line elements
 set) a trajectory for a given satellite. To predict the path of a satellite, it
 use the SGP4 library written by D. Vallado in C++.
@@ -81,16 +83,16 @@ the output of inspect consists of a tabulated "file". The columns in the result 
 
 Options:
 
-  -r   AREA      check if the predicted trajectory crossed the given region
-  -t   DIR       directory where to store a TLE fetched from a remote server
-  -s   SID       satellite identifier
-  -d   DURATION  time over which calculate the predicted trajectory
-  -i   INTERVAL  time between two points on the predicted trajectory
-  -w   FILE      output file
-  -f   FORMAT    output format (csv, pipe, json, xml)
-  -c   COORD     coordinate system used (geocentric, geodetic, teme/eci)
-  -360           longitude are given in a range of [0:360[ instead of ]-180:180[
-  -dms           transform latitude and longitude to DD°MIN'SEC'' format
+	-c   COORD   coordinate system used (geocentric, geodetic, teme/eci)
+	-d   TIME    TIME over which calculate the predicted trajectory
+	-f   FORMAT  print trajectory in FORMAT (csv, pipe, json, xml)
+	-i   TIME    TIME between two points on the predicted trajectory
+  -r   AREA    check if the predicted trajectory crossed the given AREA
+	-s   SID     satellite identifier
+  -t   DIR     store a TLE fetched from a remote server in DIR
+  -w   FILE    print trajectory in FILE
+  -360         longitude are given in range of [0:360[ instead of ]-180:180[
+  -dms         transform latitude and longitude to DD°MIN'SEC'' format
 
 Examples:
 
@@ -105,7 +107,7 @@ $ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 # calculate the predicted trajectory on 24h for the default satellite with 1 minute
 # between two points of the path. The positions will be computed according to the
 # geodetic system and printed as DD°MM'SS'. Moreover, it will check if the satellite
-# cross a rectangle draw above a small town in Belgium.
+# cross a rectangle draw above a small town in Belgium instead of the SAA.
 $ inspect -r 51.0:46.0:49.0:50 -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 `
 
