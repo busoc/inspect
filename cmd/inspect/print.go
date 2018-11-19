@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/xml"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -10,6 +12,10 @@ import (
 
 	"github.com/busoc/celest"
 )
+
+type encoder interface {
+	Encode(interface{}) error
+}
 
 type printer struct {
 	Format string // csv or pipe
@@ -24,6 +30,10 @@ func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) error {
 		return pt.printCSV(w, ps)
 	case "", "pipe":
 		return pt.printPipe(w, ps)
+	// case "xml":
+	// 	return pt.printEncoder(xml.NewEncoder(w), ps)
+	// case "json":
+	// 	return pt.printEncoder(json.NewEncoder(w), ps)
 	default:
 		return fmt.Errorf("unsupported format %s", pt.Format)
 	}
@@ -44,6 +54,15 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 	case "teme", "eci":
 		return p
 	}
+}
+
+func (pt printer) printEncoder(e encoder, ps <-chan *celest.Result) error {
+	for r := range ps {
+		if err := e.Encode(r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
