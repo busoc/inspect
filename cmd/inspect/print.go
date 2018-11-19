@@ -40,7 +40,8 @@ func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) error {
 }
 
 func (pt printer) rawFormat() bool {
-	return strings.ToLower(pt.Syst) == "teme"
+	syst := strings.ToLower(pt.Syst)
+	return syst == "teme" || syst == "eci"
 }
 
 func (pt printer) transform(p *celest.Point) *celest.Point {
@@ -70,32 +71,39 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
 	for r := range ps {
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
 		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
-		for _, p := range r.Points {
-			p = pt.transform(p)
-			jd := celest.MJD50(p.When)
-			var saa, eclipse int
-			if p.Saa {
-				saa++
-			}
-			if p.Total {
-				eclipse++
-			}
-			if !pt.rawFormat() && pt.Round {
-				p.Lon = math.Mod(p.Lon+360, 360)
-			}
-			rs := []string{
-				p.When.Format("2006-01-02T15:04:05.000000"),
-				strconv.FormatFloat(jd, 'f', -1, 64),
-				strconv.FormatFloat(p.Alt, 'f', -1, 64),
-				strconv.FormatFloat(p.Lat, 'f', -1, 64),
-				strconv.FormatFloat(p.Lon, 'f', -1, 64),
-				strconv.Itoa(eclipse),
-				strconv.Itoa(saa),
-				"-",
-			}
-			if err := ws.Write(rs); err != nil {
-				return err
-			}
+		if err := pt.printRow(ws, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (pt printer) printRow(ws *csv.Writer, r *celest.Result) error {
+	for _, p := range r.Points {
+		p = pt.transform(p)
+		jd := celest.MJD50(p.When)
+		var saa, eclipse int
+		if p.Saa {
+			saa++
+		}
+		if p.Total {
+			eclipse++
+		}
+		if !pt.rawFormat() && pt.Round {
+			p.Lon = math.Mod(p.Lon+360, 360)
+		}
+		rs := []string{
+			p.When.Format("2006-01-02T15:04:05.000000"),
+			strconv.FormatFloat(jd, 'f', -1, 64),
+			strconv.FormatFloat(p.Alt, 'f', -1, 64),
+			strconv.FormatFloat(p.Lat, 'f', -1, 64),
+			strconv.FormatFloat(p.Lon, 'f', -1, 64),
+			strconv.Itoa(eclipse),
+			strconv.Itoa(saa),
+			"-",
+		}
+		if err := ws.Write(rs); err != nil {
+			return err
 		}
 	}
 	ws.Flush()

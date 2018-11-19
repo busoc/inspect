@@ -94,11 +94,13 @@ Options:
   -w   FILE    write predicted trajectory in FILE (default to stdout)
   -360         longitude are given in range of [0:360[ instead of ]-180:180[
   -dms         convert latitude and longitude to DD°MIN'SEC'' format
+  -config      load settings from a configuration file
+  -listen      generate trajectories from HTTP requests
 
 Examples:
 
-# calcule the predicted trajectory on 24h for the default satellite from the latest
-# TLE available on celestrack
+# calculate the predicted trajectory on 24h for the default satellite from the latest
+# TLE available on celestrak
 $ inspect -d 24h -i 10s https://celestrak.com/NORAD/elements/stations.txt
 
 # calculate the predicted trajectory on 24h for the default satellite from a locale
@@ -110,6 +112,12 @@ $ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 # geodetic system and printed as DD°MM'SS'. Moreover, it will check if the satellite
 # cross a rectangle draw above a small town in Belgium instead of the SAA.
 $ inspect -r 51.0:46.0:49.0:50 -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
+
+# use a configuration file instead of command line options
+$ inspect -config etc/inspect.toml
+
+# use inspect as a REST service to generate trajectory from HTTP requests
+$ inspect -listen 0.0.0.0:1911
 `
 
 type Duration struct {

@@ -2,10 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/busoc/celest"
 )
@@ -24,7 +28,7 @@ func Handle(s Settings) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		_, err = e.Predict(n.Period.Duration, n.Interval.Duration, &n.Area)
+		rs, err := e.Predict(n.Period.Duration, n.Interval.Duration, &n.Area)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -34,9 +38,21 @@ func Handle(s Settings) http.Handler {
 			w.Header().Set("content-type", accept)
 		case "application/xml":
 			w.Header().Set("content-type", accept)
-		case "txt/csv":
+		case "text/csv":
+			var buffer bytes.Buffer
+			if err := n.Print.printRow(csv.NewWriter(&buffer), rs); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if buffer.Len() == 0 {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 			w.Header().Set("content-type", accept)
+			w.Header().Set("content-length", fmt.Sprint(buffer.Len()))
+			io.Copy(w, &buffer)
 		default:
+			fmt.Println(accept)
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
@@ -58,15 +74,25 @@ func elementFromRequest(r *http.Request, s *Settings) (*celest.Element, error) {
 	case "application/xml":
 		err = xml.NewDecoder(r.Body).Decode(&c)
 	case "text/plain":
-		rs := bufio.NewReader(r.Body)
+		// rs := bufio.NewReader(r.Body)
 		vs := make([]string, 2)
+		rs := bufio.NewScanner(r.Body)
 		for i := 0; i < len(vs); i++ {
-			vs[i], err = rs.ReadString('\n')
-			if err != nil {
+			rs.Scan()
+			vs[i] = rs.Text()
+			if err = rs.Err(); err != nil {
 				break
 			}
 		}
 		c.Row1, c.Row2 = vs[0], vs[1]
+		q := r.URL.Query()
+		if v := q.Get("period"); v != "" {
+			s.Period.Duration, err = time.ParseDuration(v)
+		}
+		if v := q.Get("interval"); v != "" {
+			s.Interval.Duration, err = time.ParseDuration(v)
+		}
+		s.Print.Syst = q.Get("frames")
 	default:
 		return nil, fmt.Errorf("unsupported content-type")
 	}
