@@ -33,29 +33,38 @@ func Handle(s Settings) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		switch accept := r.Header.Get("accept"); accept {
+		var buffer bytes.Buffer
+		accept := r.Header.Get("accept")
+		switch accept {
 		case "application/json":
-			w.Header().Set("content-type", accept)
+			ps := make([]*celest.Point, len(rs.Points))
+			for i := range ps {
+				ps[i] = n.Print.transform(rs.Points[i])
+			}
+			err = json.NewEncoder(&buffer).Encode(ps)
 		case "application/xml":
-			w.Header().Set("content-type", accept)
+			ps := make([]*celest.Point, len(rs.Points))
+			for i := range ps {
+				ps[i] = n.Print.transform(rs.Points[i])
+			}
+			err = xml.NewEncoder(&buffer).Encode(rs.Points)
 		case "text/csv":
-			var buffer bytes.Buffer
-			if err := n.Print.printRow(csv.NewWriter(&buffer), rs); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if buffer.Len() == 0 {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			w.Header().Set("content-type", accept)
-			w.Header().Set("content-length", fmt.Sprint(buffer.Len()))
-			io.Copy(w, &buffer)
+			err = n.Print.printRow(csv.NewWriter(&buffer), rs)
 		default:
-			fmt.Println(accept)
 			w.WriteHeader(http.StatusNotAcceptable)
 			return
 		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if buffer.Len() == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("content-type", accept)
+		w.Header().Set("content-length", fmt.Sprint(buffer.Len()))
+		io.Copy(w, &buffer)
 	}
 	return http.HandlerFunc(f)
 }

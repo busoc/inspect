@@ -20,18 +20,18 @@ type Result struct {
 }
 
 type Point struct {
-	When  time.Time
-	Epoch float64
+	When  time.Time `json:"dtstamp" xml:"dtstamp"`
+	Epoch float64   `json:"jd" xml:"jd"`
 
 	// Satellite position
-	Lat float64
-	Lon float64
-	Alt float64
+	Lat float64 `json:"lat" xml:"lat"`
+	Lon float64 `json:"lon" xml:"lon"`
+	Alt float64 `json:"alt" xml:"alt"`
 
 	// SAA and Eclipse crossing
-	Saa     bool
-	Partial bool
-	Total   bool
+	Saa     bool `json:"crossing" xml:"crossing"`
+	Partial bool `json:"-" xml:"-"`
+	Total   bool `json:"eclipse" xml:"eclipse"`
 }
 
 func (p Point) Geocentric() Point {
