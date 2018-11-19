@@ -33,14 +33,14 @@ const helpText = `Satellite trajectory prediction tool with Eclipse and SAA cros
 
 Usage: inspect [-c] [-d] [-i] [-f] [-r] [-s] [-t] [-w] [-360] [-dms] <tle,...>
 
-inspect allows to calculate from a set of (locale or remote) TLE (two line elements
-set) a trajectory for a given satellite. To predict the path of a satellite, it
-use the SGP4 library written by D. Vallado in C++.
+inspect allows to calculate from a set of locale or remote Two Line Elements (TLE)
+a trajectory for a given satellite. To predict the path of a satellite, it use
+internally the SGP4 library written by D. Vallado (written in C++).
 
-The predicted trajectory given by inspect computes each point independantly of the
-previous. The consequence is that the results of inspect could be "quickly" different
-from other prediction tools that use a different method of predicting the trajectory
-from the same TLE and satellite.
+The predicted trajectory given by inspect computes each point independently of the
+previous. The result is that the outcome of inspect could more or less vary from
+different prediction tools that use other methods to predict the trajectory of a
+satellite with the same TLE.
 
 Coordinate systems/frames:
 
