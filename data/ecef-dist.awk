@@ -4,10 +4,11 @@ BEGIN {
   flattening = 0.003352813178;
   pi = 3.14159265358979323846264338327950288419716939937510582097494459;
   deg2rad = pi / 180.0;
-  row = "%5d | %12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.6f | %12.5fkm | %12.5f° | %12.5f° || %12.5fkm\n"
+  row = "%5d || %12.6f | %12.5f | %12.5f | %12.5f || %12.6f | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
   avg = 0
   min = 0
   max = 0
+  latlon = 1
 } {
   alt = $3;
   lat = $4 * deg2rad;
@@ -31,11 +32,15 @@ BEGIN {
   y1 = ((n+alt) * cos(lat) * sin(lon));
   z1 = ((n*(1-excentricity) + alt) * sin (lat));
 
-  diff = (x1-x0) ^ 2 + (y1-y0) ^ 2 + (z1-z0) ^ 2
+  diff = ((x1-x0) ** 2) + ((y1-y0) ** 2) + ((z1-z0) ** 2)
   dist = sqrt(diff)
   avg += dist
 
-  printf(row, NR, $2, $3, $4, $5, $9, $10, $11, $12, dist)
+  if (latlon==1) {
+    printf(row, NR, $2, $3, $4, $5, $9, $10, $11, $12, dist)
+  } else {
+    printf(row, NR, $2, z0, x0, y0, $9, z1, x1, y1, dist)
+  }
 }
 END {
   printf("average distance: %12.2fkm\n", avg/NR)
