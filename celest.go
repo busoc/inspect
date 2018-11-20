@@ -30,14 +30,23 @@ const (
 const (
 	deltaModJD  = 2400000.5
 	deltaCnesJD = 2433282.5
+	deltaJ2000  = 2451545.0
 	jdByMil = 36525.0
 )
 
 const Axis = 3
 
 func gstTimeBis(jd float64) float64 {
-	cjd := (jd-2415020.0)/jdByMil
-	return 0
+	cjd := (jd - deltaJ2000) / jdByMil
+
+	gst := (-6.2e-6 * cjd * cjd * cjd) + (0.093104 * cjd * cjd) + ((876600.0 * secPerHours + 8640184.812866) * cjd) + 67310.54841
+	gst = math.Mod((gst * deg2rad) / 240.0, 2 * math.Pi)
+
+	if gst < 0.0 {
+		gst += 2*math.Pi
+	}
+
+	return gst
 }
 
 func gstTime(t time.Time) float64 {

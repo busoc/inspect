@@ -56,16 +56,17 @@ func ecef2Geodetic(x, y, z float64) (float64, float64, float64) {
 	delta := math.Asin(z / norm)
 
 	lat := delta
-	var hell float64
-	for {
+	var alt float64
+	for i := 0; i < 2; i++ {
 		delta = lat
 		sin := math.Sin(lat)
 		c := earthRadius / math.Sqrt(1-(eex*sin*sin))
+
 		lat = math.Atan((z + c*eex*sin) / radius)
+		alt = (radius / math.Cos(lat)) - c
 		if diff := math.Abs(delta - lat); diff <= Tolerance {
-			hell = (radius / math.Cos(lat)) - c
 			break
 		}
 	}
-	return lat, lon, hell
+	return lat, lon, alt
 }
