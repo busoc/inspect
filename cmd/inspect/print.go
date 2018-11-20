@@ -47,6 +47,9 @@ func (pt printer) rawFormat() bool {
 func (pt printer) transform(p *celest.Point) *celest.Point {
 	switch strings.ToLower(pt.Syst) {
 	default:
+		g := p.Classic()
+		return &g
+	case "geocentric":
 		g := p.Geocentric()
 		return &g
 	case "geodetic", "geodesic":

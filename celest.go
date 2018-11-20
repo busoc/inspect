@@ -61,8 +61,7 @@ func modf(f, x float64) float64 {
 
 func gstTime(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
-	cjd := (jd - deltaJ2000) / jdByMil
-	// cjd := (jd-2415020.0)/jdByMil
+	cjd := (jd-2415020.0)/jdByMil
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184.542*cjd + 0.092*cjd*cjd + (h + m + s)

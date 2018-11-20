@@ -32,20 +32,39 @@ type Point struct {
 	Saa     bool `json:"crossing" xml:"crossing"`
 	Partial bool `json:"-" xml:"-"`
 	Total   bool `json:"eclipse" xml:"eclipse"`
+
+	converted bool
 }
 
 func (p Point) MJD() float64 {
 	return p.Epoch - deltaCnesJD
 }
 
-func (p Point) Geocentric() Point {
+func (p Point) Classic() Point {
+	if p.converted {
+		return p
+	}
 	n := p
+	n.Lat, n.Lon, n.Alt = ConvertTEME(p.When, []float64{n.Lat, n.Lon, n.Alt})
+	return n
+}
+
+func (p Point) Geocentric() Point {
+	if p.converted {
+		return p
+	}
+	n := p
+	n.converted = true
 	n.Lat, n.Lon, n.Alt = coord.GeocentricFromECEF(p.toECEF())
 	return n
 }
 
 func (p Point) Geodetic() Point {
+	if p.converted {
+		return p
+	}
 	n := p
+	n.converted = true
 	n.Lat, n.Lon, n.Alt = coord.GeodeticFromECEF(p.toECEF())
 	return n
 }
