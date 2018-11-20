@@ -3,6 +3,7 @@ package celest
 import (
 	"math"
 	"time"
+	// "fmt"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 	deltaModJD  = 2400000.5
 	deltaCnesJD = 2433282.5
 	deltaJ2000  = 2451545.0
-	jdByMil = 36525.0
+	jdByMil     = 36525.0
 )
 
 const Axis = 3
@@ -39,19 +40,29 @@ const Axis = 3
 func gstTimeBis(jd float64) float64 {
 	cjd := (jd - deltaJ2000) / jdByMil
 
-	gst := (-6.2e-6 * cjd * cjd * cjd) + (0.093104 * cjd * cjd) + ((876600.0 * secPerHours + 8640184.812866) * cjd) + 67310.54841
-	gst = math.Mod((gst * deg2rad) / 240.0, 2 * math.Pi)
+	h := modf(jd-deltaCnesJD, 24)
+	m := modf(h, 60)
+	s := modf(m, 60)
 
-	if gst < 0.0 {
-		gst += 2*math.Pi
-	}
+	h = math.Floor(h) * secPerHours
+	m = math.Floor(m) * secPerMins
 
-	return gst
+	gha := 23925.836 + 8640184.542*cjd + 0.092*cjd*cjd + (h + m + s)
+	gst := gha * (360.0 / secPerDays)
+	gst -= math.Floor(gst/360.0) * 360.0
+
+	return gst / 180.0 * math.Pi
+}
+
+func modf(f, x float64) float64 {
+	_, v := math.Modf(f)
+	return v * x
 }
 
 func gstTime(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
-	cjd := (jd-2415020.0)/jdByMil
+	cjd := (jd - deltaJ2000) / jdByMil
+	// cjd := (jd-2415020.0)/jdByMil
 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
 
 	gha := 23925.836 + 8640184.542*cjd + 0.092*cjd*cjd + (h + m + s)
@@ -131,7 +142,7 @@ func sunPosition(ws []float64) [][]float64 {
 	ps := make([][]float64, len(ws))
 	for i := range ws {
 		cjd := (ws[i] - 2451545.0) / jdByMil
-		m := 357.5256 + 35999.049 * cjd
+		m := 357.5256 + 35999.049*cjd
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
 		distance := (149.619 - (2.499 * math.Cos(m/180*math.Pi)) - (0.021 * math.Cos(2*m/180*math.Pi))) * math.Pow10(9)
 

@@ -52,8 +52,8 @@ func (p Point) Geodetic() Point {
 
 func (p Point) toECEF() (float64, float64, float64) {
 	vs := []float64{p.Lat, p.Lon, p.Alt}
-	cs := ecefCoordinates(gstTimeBis(p.Epoch), vs)
 	// cs := ecefCoordinates(gstTime(p.When), vs)
+	cs := ecefCoordinates(gstTimeBis(p.Epoch), vs)
 	return cs[0], cs[1], cs[2]
 }
 
@@ -162,11 +162,11 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 		w := time.Date(year, time.Month(month), day, hour, min, int(cs), int(ns*1e9), time.UTC)
 
 		t := Point{
-			Lat:  ps[0],
-			Lon:  ps[1],
-			Alt:  ps[2],
-			When: w,
-			Epoch: jd+jdf,
+			Lat:   ps[0],
+			Lon:   ps[1],
+			Alt:   ps[2],
+			When:  w,
+			Epoch: jd + jdf,
 		}
 
 		for i := range ps {
