@@ -46,6 +46,7 @@ func (p Point) Classic() Point {
 	}
 	n := p
 	n.Lat, n.Lon, n.Alt = ConvertTEME(p.When, []float64{n.Lat, n.Lon, n.Alt})
+	n.Alt = n.Alt/1000
 	return n
 }
 
