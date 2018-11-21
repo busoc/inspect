@@ -18,6 +18,8 @@ func init() {
   log.SetFlags(0)
 }
 
+const Leap = time.Second*18
+
 func main() {
   coord := flag.String("m", "", "coordinate system")
   round := flag.Bool("360", false, "360")
@@ -38,6 +40,7 @@ func main() {
       log.Fatalln(err)
     }
     if prev != nil && p.When.Equal(prev.When) {
+      i--
       continue
     }
     log.Printf("%6d | %s | %12.6f | %12.5f | %12.5f | %12.5f", i, p.When.Format("2006-01-02T15:04:05.000000"), p.MJD(), p.Alt, p.Lat, p.Lon)
@@ -53,6 +56,7 @@ func parsePoint(rs []string, t string, round bool) (*celest.Point, error) {
   if p.When, err = time.Parse(time.RFC3339, rs[1]); err != nil {
     return nil, err
   } else {
+    p.When = p.When.Add(-Leap)
     p.Epoch = celest.JD(p.When)
   }
   if p.Alt, err = strconv.ParseFloat(rs[2], 64); err != nil {
