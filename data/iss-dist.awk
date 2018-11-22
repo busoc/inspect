@@ -23,13 +23,13 @@ function distance(latlon) {
 
   diff = ((x1-x0) ** 2) + ((y1-y0) ** 2) + ((z1-z0) ** 2)
   dist = sqrt(diff)
-  avg += dist
 
   if (latlon==1) {
     printf(row, NR, $1, $3, $4, $5, $10, $12, $13, $14, dist)
   } else {
     printf(row, NR, $2, z0, x0, y0, $9, z1, x1, y1, dist)
   }
+  return dist
 }
 
 BEGIN {
@@ -44,11 +44,13 @@ BEGIN {
   min = 0
   max = 0
   latlon = 1
+  rc = 0
 } {
   if (substr($1, 1, 19) == substr($10, 1, 19)) {
-    distance(latlon)
+    rc++
+    avg += distance(latlon)
   }
 }
 END {
-  printf("average distance: %12.2fkm\n", avg/NR)
+  printf("average distance: %12.2fkm\n", avg/rc)
 }
