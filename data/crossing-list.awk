@@ -5,6 +5,8 @@ BEGIN {
   stend = "";
   eclipse = 0;
   saa = 0;
+  ecount = 0;
+  scount = 0;
 } {
   if ( eclipse == 0 && $6 == 1 ) {
     etstart = $1;
@@ -14,7 +16,8 @@ BEGIN {
     etend = $1;
   }
   else if ( eclipse == 1 && $6 == 0 ) {
-    printf("%-10s | %s | %s\n", "eclipse", etstart, etend);
+    ecount++
+    printf("%3d | %-10s | %s | %s\n", ecount, "eclipse", etstart, etend);
     eclipse = 0;
   }
 
@@ -26,7 +29,8 @@ BEGIN {
     stend = $1;
   }
   else if ( saa == 1 && $7 == 0 ) {
-    printf("%-10s | %s | %s\n", "saa", ststart, stend);
+    scount++
+    printf("%3d | %-10s | %s | %s\n", scount, "saa", ststart, stend);
     saa = 0;
   }
 }

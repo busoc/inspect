@@ -3,7 +3,6 @@ package celest
 import (
 	"math"
 	"time"
-	// "fmt"
 )
 
 const (
@@ -19,7 +18,8 @@ const (
 const (
 	// earthRadius = 6371.20 * 1000
 	earthRadius = 6378.136 * 1000
-	sunRadius   = 6.96033e8
+	// sunRadius   = 6.96033e8
+	sunRadius   = 695700 * 1000
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 	deltaModJD  = 2400000.5
 	deltaCnesJD = 2433282.5
 	deltaJ2000  = 2451545.0
-	jdByMil     = 36525.0
+	jdByMil = 36525.0
 )
 
 const Axis = 3
@@ -85,6 +85,39 @@ func mjdTime(t time.Time) (float64, float64, float64) {
 
 	return jd, jd - deltaCnesJD, (jd - deltaCnesJD) / jdByMil
 }
+
+// func gstTimeBis(jd float64) float64 {
+// 	cjd := (jd-2415020.0)/jdByMil
+//
+// 	return 0
+// }
+//
+// func gstTime(t time.Time) float64 {
+// 	jd, _, _ := mjdTime(t)
+// 	cjd := (jd-2415020.0)/jdByMil
+// 	h, m, s := float64(t.Hour())*secPerHours, float64(t.Minute())*secPerMins, float64(t.Second())
+//
+// 	gha := 23925.836 + 8640184.542*cjd + 0.092*cjd*cjd + (h + m + s)
+// 	gst := gha * (360.0 / secPerDays)
+// 	gst -= math.Floor(gst/360.0) * 360.0
+//
+// 	return gst / 180.0 * math.Pi
+// }
+//
+// func mjdTime(t time.Time) (float64, float64, float64) {
+// 	y, m, d := float64(t.Year()), float64(t.Month()), float64(t.Day())
+// 	h, i, s, ms := float64(t.Hour()), float64(t.Minute()), float64(t.Second()), float64(t.Nanosecond())/1000
+//
+// 	f := ((ms / math.Pow10(9)) + s + (i * secPerMins) + (h * secPerHours)) / secPerDays
+// 	c := math.Trunc((m - 14) / 12)
+//
+// 	jd := d - 32075 + math.Floor(1461*(y+4800+c)/4)
+// 	jd += math.Floor(367 * (m - 2 - c*12) / 12)
+// 	jd -= math.Floor(3 * (math.Floor(y+4900+c) / 100) / 4)
+// 	jd += f - 0.5
+//
+// 	return jd, jd - deltaCnesJD, (jd - deltaCnesJD) / jdByMil
+// }
 
 func JD(t time.Time) float64 {
 	jd, _, _ := mjdTime(t)
@@ -140,8 +173,8 @@ func sunPosition(ws []float64) [][]float64 {
 	)
 	ps := make([][]float64, len(ws))
 	for i := range ws {
-		cjd := (ws[i] - 2451545.0) / jdByMil
-		m := 357.5256 + 35999.049*cjd
+		cjd := (ws[i] - deltaJ2000) / jdByMil
+		m := 357.5256 + 35999.049 * cjd
 		ecliptic := omega + m + (6892 / secPerHours * math.Sin(m/180*math.Pi)) + (72 / secPerHours * math.Sin(2*m/180*math.Pi))
 		distance := (149.619 - (2.499 * math.Cos(m/180*math.Pi)) - (0.021 * math.Cos(2*m/180*math.Pi))) * math.Pow10(9)
 

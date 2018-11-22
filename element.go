@@ -198,8 +198,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 			t.Saa = saa.Contains(t.Geodetic())
 		}
 		ts = append(ts, &t)
-		js = append(js, jd+jdf)
-		// ws = append(ws, w)
+		js = append(js, t.Epoch)
 
 		when += delta
 	}
