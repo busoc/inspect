@@ -14,7 +14,7 @@ BEGIN {
     etend = $1;
   }
   else if ( eclipse == 1 && $6 == 0 ) {
-    printf("eclipse,%s,%s\n", etstart, etend);
+    printf("%-10s | %s | %s\n", "eclipse", etstart, etend);
     eclipse = 0;
   }
 
@@ -26,7 +26,7 @@ BEGIN {
     stend = $1;
   }
   else if ( saa == 1 && $7 == 0 ) {
-    printf("saa,%s,%s\n", ststart, stend);
+    printf("%-10s | %s | %s\n", "saa", ststart, stend);
     saa = 0;
   }
 }
