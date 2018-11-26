@@ -34,14 +34,12 @@ const helpText = `Satellite trajectory prediction tool with Eclipse and SAA cros
 
 Usage: inspect [-c] [-d] [-i] [-f] [-r] [-s] [-t] [-w] [-360] [-dms] <tle,...>
 
-inspect allows to calculate from a set of locale or remote Two Line Elements (TLE)
-a trajectory for a given satellite. To predict the path of a satellite, it use
-internally the SGP4 library written by D. Vallado (written in C++).
+inspect calculates the trajectory of a given satellite from a set of (local or
+remote) TLE (two-line elements set). To predict the path of a satellite, it uses
+the SGP4 library written by D. Vallado in C++.
 
-The predicted trajectory given by inspect computes each point independently of the
-previous. The result is that the outcome of inspect could more or less vary from
-different prediction tools that use other methods to predict the trajectory of a
-satellite with the same TLE.
+The predicted trajectory given by inspect computes each point independantly from
+the previous, unlike other propagation methods.
 
 Coordinate systems/frames:
 
@@ -71,7 +69,8 @@ ISS (ZARYA)
 
 Output format:
 
-the output of inspect consists of a tabulated "file". The columns in the result are:
+
+the output of inspect consists of a tabulated "file". The columns of the file are:
 
 - datetime (YYYY-mm-dd HH:MM:SS.ssssss)
 - modified julian day
@@ -99,18 +98,18 @@ Options:
 
 Examples:
 
-# calculate the predicted trajectory on 24h for the default satellite from the latest
-# TLE available on celestrak
+# calculate the predicted trajectory over 24h for the default satellite from the
+# latest TLE available on celestrak
 $ inspect -d 24h -i 10s https://celestrak.com/NORAD/elements/stations.txt
 
-# calculate the predicted trajectory on 24h for the default satellite from a locale
-# TLE
+# calculate the predicted trajectory over 24h for the default satellite from a
+# locale TLE
 $ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 
 # calculate the predicted trajectory on 24h for the default satellite with 1 minute
 # between two points of the path. The positions will be computed according to the
 # geodetic system and printed as DD°MM'SS'. Moreover, it will check if the satellite
-# cross a rectangle draw above a small town in Belgium instead of the SAA.
+# cross a rectangle draw above a small town in Belgium.
 $ inspect -r 51.0:46.0:49.0:50 -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 
 # use a configuration file instead of command line options
