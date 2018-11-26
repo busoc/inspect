@@ -106,7 +106,7 @@ $ inspect -d 24h -i 10s https://celestrak.com/NORAD/elements/stations.txt
 # locale TLE
 $ inspect -c geodetic -dms -d 72h -i 1m /tmp/tle-201481119.txt
 
-# calculate the predicted trajectory on 24h for the default satellite with 1 minute
+# calculate the predicted trajectory over 72h for the default satellite with 1 minute
 # between two points of the path. The positions will be computed according to the
 # geodetic system and printed as DD°MM'SS'. Moreover, it will check if the satellite
 # cross a rectangle draw above a small town in Belgium.
