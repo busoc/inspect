@@ -49,7 +49,7 @@ func Handle(s Settings) http.Handler {
 			}
 			err = xml.NewEncoder(&buffer).Encode(rs.Points)
 		case "text/csv":
-			err = n.Print.printRow(csv.NewWriter(&buffer), rs)
+			err = n.Print.printRow(csv.NewWriter(&buffer), rs, nil)
 		default:
 			w.WriteHeader(http.StatusNotAcceptable)
 			return

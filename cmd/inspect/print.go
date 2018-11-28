@@ -2,19 +2,25 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/busoc/celest"
 )
 
-type encoder interface {
-	Encode(interface{}) error
+type meta struct {
+	TLE      int
+	Points   int
+
+	Crossing     int
+	CrossingTime time.Duration
+
+	Eclipse     int
+	EclipseTime time.Duration
 }
 
 type printer struct {
@@ -24,18 +30,14 @@ type printer struct {
 	Round  bool   `toml:"to360"`  //360
 }
 
-func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) error {
+func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	switch strings.ToLower(pt.Format) {
 	case "csv":
 		return pt.printCSV(w, ps)
 	case "", "pipe":
 		return pt.printPipe(w, ps)
-	case "xml":
-		return pt.printEncoder(xml.NewEncoder(w), ps)
-	case "json":
-		return pt.printEncoder(json.NewEncoder(w), ps)
 	default:
-		return fmt.Errorf("unsupported format %s", pt.Format)
+		return nil, fmt.Errorf("unsupported format %s", pt.Format)
 	}
 }
 
@@ -60,28 +62,28 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 	}
 }
 
-func (pt printer) printEncoder(e encoder, ps <-chan *celest.Result) error {
-	// for r := range ps {
-	// 	if err := e.Encode(r); err != nil {
-	// 		return err
-	// 	}
-	// }
-	return nil
-}
-
-func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) error {
+func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	ws := csv.NewWriter(w)
+	var m meta
 	for r := range ps {
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[0]))
-		io.WriteString(w, fmt.Sprintf("#%s\n", r.TLE[1]))
-		if err := pt.printRow(ws, r); err != nil {
-			return err
+		m.TLE++
+		m.Points += len(r.Points)
+
+		fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#%s", r.TLE[0])
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#%s", r.TLE[1])
+		fmt.Fprintln(w)
+
+		if err := pt.printRow(ws, r, &m); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return &m, nil
 }
 
-func (pt printer) printRow(ws *csv.Writer, r *celest.Result) error {
+func (pt printer) printRow(ws *csv.Writer, r *celest.Result, m *meta) error {
 	for _, p := range r.Points {
 		p = pt.transform(p)
 		var saa, eclipse int
@@ -112,14 +114,17 @@ func (pt printer) printRow(ws *csv.Writer, r *celest.Result) error {
 	return ws.Error()
 }
 
-func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
+func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	var row string
 	if !pt.rawFormat() && pt.DMS {
 		row = "%s | %.6f | %18.5f | %s | %s | %d | %d"
 	} else {
 		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
 	}
+	var m meta
 	for r := range ps {
+		m.TLE++
+		m.Points += len(r.Points)
 		for _, p := range r.Points {
 			p = pt.transform(p)
 			var saa, eclipse int
@@ -143,7 +148,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) error {
 			fmt.Fprintln(w)
 		}
 	}
-	return nil
+	return &m, nil
 }
 
 func toDMS(v float64, dir string) string {

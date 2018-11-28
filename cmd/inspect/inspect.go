@@ -26,8 +26,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "0.0.1-dev"
-	BuildTime = "2018-11-20 13:21:00"
+	Version   = "1.0.0"
+	BuildTime = "2018-11-28 13:55:00"
 )
 
 const helpText = `Satellite trajectory prediction tool with Eclipse and SAA crossing.
@@ -83,18 +83,20 @@ the output of inspect consists of a tabulated "file". The columns of the file ar
 
 Options:
 
-  -c   COORD   coordinate system used (geocentric, geodetic, teme/eci)
-  -d   TIME    TIME over which calculate the predicted trajectory
-  -f   FORMAT  print predicted trajectory in FORMAT (csv, pipe, json, xml)
-  -i   TIME    TIME between two points on the predicted trajectory
-  -r   AREA    check if the predicted trajectory crossed the given AREA
-  -s   SID     satellite identifier
-  -t   DIR     store a TLE fetched from a remote server in DIR
-  -w   FILE    write predicted trajectory in FILE (default to stdout)
-  -360         longitude are given in range of [0:360[ instead of ]-180:180[
-  -dms         convert latitude and longitude to DD°MIN'SEC'' format
-  -config      load settings from a configuration file
-  -listen      generate trajectories from HTTP requests
+  -c       COORD   coordinate system used (geocentric, geodetic, teme/eci)
+  -d       TIME    TIME over which calculate the predicted trajectory
+  -f       FORMAT  print predicted trajectory in FORMAT (csv, pipe, json, xml)
+  -i       TIME    TIME between two points on the predicted trajectory
+  -r       AREA    check if the predicted trajectory crossed the given AREA
+  -s       SID     satellite identifier
+  -t       DIR     store a TLE fetched from a remote server in DIR
+  -w       FILE    write predicted trajectory in FILE (default to stdout)
+  -360             longitude are given in range of [0:360[ instead of ]-180:180[
+  -dms             convert latitude and longitude to DD°MIN'SEC'' format
+  -config          load settings from a configuration file
+  -listen          generate trajectories from HTTP requests
+	-version         print inspect version and exit
+  -help            print this message and exit
 
 Examples:
 
@@ -136,6 +138,7 @@ func (d *Duration) String() string {
 }
 
 func init() {
+	log.SetOutput(os.Stderr)
 	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, helpText)
@@ -186,7 +189,13 @@ func main() {
 	flag.StringVar(&s.File, "w", "", "write trajectory to file (stdout if not provided)")
 	config := flag.Bool("config", false, "use configuration file")
 	listen := flag.Bool("listen", false, "run a webserver")
+	version := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *version {
+		fmt.Fprintf(os.Stderr, "%s-%s (%s)\n", Program, Version, BuildTime)
+		os.Exit(2)
+	}
 
 	if flag.NArg() == 0 {
 		flag.Usage()
@@ -206,6 +215,12 @@ func main() {
 		sources = []string{s.Source}
 	}
 
+	log.Printf("%s-%s (build: %s)", Program, Version, BuildTime)
+	log.Printf("settings: trajectory duration %s", s.Period.Duration)
+	log.Printf("settings: trajectory interval %s", s.Interval.Duration)
+	log.Printf("settings: satellite identifier %d", s.Sid)
+	log.Printf("settings: crossing area %s", s.Area.String())
+	log.Printf("settings: latlon system %s", s.Print.Syst)
 	t, err := fetchTLE(sources, s.Temp, s.Sid)
 	if err != nil {
 		log.Fatalln(err)
@@ -214,17 +229,30 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	var w io.Writer = os.Stdout
+	var w io.Writer
+	digest := md5.New()
 	switch f, err := os.Create(s.File); {
 	case err == nil:
 		defer f.Close()
-		w = f
-	case err != nil && s.File != "":
+		w = io.MultiWriter(f, digest)
+	case err != nil && s.File == "":
+		w = io.MultiWriter(os.Stdout, digest)
+	default:
 		log.Fatalln(err)
 	}
-	if err := s.Print.Print(w, rs); err != nil {
+	m, err := s.Print.Print(w, rs)
+	if err != nil {
 		log.Fatalln(err)
 	}
+	log.Printf("%d TLE used", m.TLE)
+	log.Printf("%d positions predicted", m.Points)
+	if m.Eclipse > 0 {
+		log.Printf("%d eclipses during trajectory (%s)", m.Eclipse, m.EclipseTime)
+	}
+	if m.Crossing > 0 {
+		log.Printf("%d crossing during trajectory (%s)", m.Crossing, m.CrossingTime)
+	}
+	log.Printf("md5: %x", digest.Sum(nil))
 }
 
 func fetchTLE(ps []string, copydir string, sid int) (*celest.Trajectory, error) {
