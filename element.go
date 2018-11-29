@@ -16,6 +16,7 @@ const (
 
 type Result struct {
 	TLE    []string
+	Epoch  float64
 	Points []*Point
 }
 
@@ -207,7 +208,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 		ts[i].Total = fes[i]
 		ts[i].Partial = pes[i]
 	}
-	return &Result{TLE: e.TLE, Points: ts}, nil
+	return &Result{TLE: e.TLE, Epoch: epoch, Points: ts}, nil
 }
 
 func scanLine1(r string, e *Element) error {

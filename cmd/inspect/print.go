@@ -100,7 +100,7 @@ func (pt printer) printRow(ws *csv.Writer, r *celest.Result, m *meta) error {
 			strconv.FormatFloat(p.Lon, 'f', -1, 64),
 			formatBool(p.Total),
 			formatBool(p.Saa),
-			"-",
+			strconv.FormatFloat(r.Epoch, 'f', -1, 64),
 		}
 		if err := ws.Write(rs); err != nil {
 			return err
@@ -120,9 +120,9 @@ func formatBool(b bool) string {
 func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	var row string
 	if !pt.rawFormat() && pt.DMS {
-		row = "%s | %.6f | %18.5f | %s | %s | %s | %s"
+		row = "%s | %.6f | %18.5f | %s | %s | %s | %s | %.6f"
 	} else {
-		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %s | %s"
+		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %s | %s | %.6f"
 	}
 	var m meta
 	var saa, eclipse *celest.Point
@@ -154,7 +154,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error
 			} else {
 				lat, lon = p.Lat, p.Lon
 			}
-			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), p.MJD(), p.Alt, lat, lon, formatBool(p.Total), formatBool(p.Saa))
+			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), p.MJD(), p.Alt, lat, lon, formatBool(p.Total), formatBool(p.Saa), r.Epoch)
 			fmt.Fprintln(w)
 		}
 	}
