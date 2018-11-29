@@ -18,10 +18,12 @@ type rect struct {
 	South float64
 	West  float64
 	East  float64
+	Syst  string
 }
 
 func (r *rect) Contains(p celest.Point) bool {
-	return (p.Lat > r.South && p.Lat < r.North) && (p.Lon > r.West && p.Lon < r.East)
+	x := transform(&p, r.Syst)
+	return (x.Lat > r.South && x.Lat < r.North) && (x.Lon > r.West && x.Lon < r.East)
 }
 
 func (r *rect) Set(s string) error {

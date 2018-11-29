@@ -195,7 +195,7 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 		// TODO: compute eclipse on/off when knowing position of satellite
 		es = append(es, ps)
 		if saa != nil {
-			t.Saa = saa.Contains(t.Geodetic())
+			t.Saa = saa.Contains(t)
 		}
 		ts = append(ts, &t)
 		js = append(js, t.Epoch)

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/busoc/celest"
@@ -214,6 +215,7 @@ func main() {
 		}
 		sources = []string{s.Source}
 	}
+	s.Area.Syst = s.Print.Syst
 
 	log.Printf("%s-%s (build: %s)", Program, Version, BuildTime)
 	log.Printf("settings: trajectory duration %s", s.Period.Duration)
@@ -246,12 +248,9 @@ func main() {
 	}
 	log.Printf("%d TLE used", m.TLE)
 	log.Printf("%d positions predicted", m.Points)
-	if m.Eclipse > 0 {
-		log.Printf("%d eclipses during trajectory (%s)", m.Eclipse, m.EclipseTime)
-	}
-	if m.Crossing > 0 {
-		log.Printf("%d crossing during trajectory (%s)", m.Crossing, m.CrossingTime)
-	}
+	log.Printf("%d eclipses during trajectory", m.Eclipse)
+	log.Printf("%d crossing during trajectory (%s)", m.Crossing, s.Area.String())
+
 	log.Printf("md5: %x", digest.Sum(nil))
 }
 
@@ -292,4 +291,20 @@ func fetchTLE(ps []string, copydir string, sid int) (*celest.Trajectory, error) 
 		}
 	}
 	return &t, nil
+}
+
+func transform(p *celest.Point, syst string) *celest.Point {
+	switch strings.ToLower(syst) {
+	default:
+		g := p.Classic()
+		return &g
+	case "geocentric":
+		g := p.Geocentric()
+		return &g
+	case "geodetic", "geodesic":
+		g := p.Geodetic()
+		return &g
+	case "teme", "eci":
+		return p
+	}
 }

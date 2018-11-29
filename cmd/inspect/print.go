@@ -47,19 +47,7 @@ func (pt printer) rawFormat() bool {
 }
 
 func (pt printer) transform(p *celest.Point) *celest.Point {
-	switch strings.ToLower(pt.Syst) {
-	default:
-		g := p.Classic()
-		return &g
-	case "geocentric":
-		g := p.Geocentric()
-		return &g
-	case "geodetic", "geodesic":
-		g := p.Geodetic()
-		return &g
-	case "teme", "eci":
-		return p
-	}
+	return transform(p, pt.Syst)
 }
 
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
@@ -84,14 +72,22 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error)
 }
 
 func (pt printer) printRow(ws *csv.Writer, r *celest.Result, m *meta) error {
+	var saa, eclipse *celest.Point
 	for _, p := range r.Points {
 		p = pt.transform(p)
-		var saa, eclipse int
-		if p.Saa {
-			saa++
+		if p.Saa && saa == nil {
+			saa = p
 		}
-		if p.Total {
-			eclipse++
+		if !p.Saa && saa != nil {
+			m.Crossing++
+			saa = nil
+		}
+		if p.Total && eclipse == nil {
+			eclipse = p
+		}
+		if !p.Total && eclipse != nil {
+			m.Eclipse++
+			eclipse = nil
 		}
 		if !pt.rawFormat() && pt.Round {
 			p.Lon = math.Mod(p.Lon+360, 360)
@@ -102,8 +98,8 @@ func (pt printer) printRow(ws *csv.Writer, r *celest.Result, m *meta) error {
 			strconv.FormatFloat(p.Alt, 'f', -1, 64),
 			strconv.FormatFloat(p.Lat, 'f', -1, 64),
 			strconv.FormatFloat(p.Lon, 'f', -1, 64),
-			strconv.Itoa(eclipse),
-			strconv.Itoa(saa),
+			formatBool(p.Total),
+			formatBool(p.Saa),
 			"-",
 		}
 		if err := ws.Write(rs); err != nil {
@@ -114,27 +110,41 @@ func (pt printer) printRow(ws *csv.Writer, r *celest.Result, m *meta) error {
 	return ws.Error()
 }
 
+func formatBool(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
+
 func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	var row string
 	if !pt.rawFormat() && pt.DMS {
-		row = "%s | %.6f | %18.5f | %s | %s | %d | %d"
+		row = "%s | %.6f | %18.5f | %s | %s | %s | %s"
 	} else {
-		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %d | %d"
+		row = "%s | %.6f | %18.5f | %18.5f | %18.5f | %s | %s"
 	}
 	var m meta
+	var saa, eclipse *celest.Point
 	for r := range ps {
 		m.TLE++
 		m.Points += len(r.Points)
 		for _, p := range r.Points {
 			p = pt.transform(p)
-			var saa, eclipse int
-			if p.Saa {
-				saa++
+			if p.Saa && saa == nil {
+				saa = p
 			}
-			if p.Total {
-				eclipse++
+			if !p.Saa && saa != nil {
+				m.Crossing++
+				saa = nil
 			}
-			// jd := celest.MJD50(p.When)
+			if p.Total && eclipse == nil {
+				eclipse = p
+			}
+			if !p.Total && eclipse != nil {
+				m.Eclipse++
+				eclipse = nil
+			}
 			if !pt.rawFormat() && pt.Round {
 				p.Lon = math.Mod(p.Lon+360, 360)
 			}
@@ -144,7 +154,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error
 			} else {
 				lat, lon = p.Lat, p.Lon
 			}
-			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), p.MJD(), p.Alt, lat, lon, eclipse, saa)
+			fmt.Fprintf(w, row, p.When.Format("2006-01-02 15:04:05.000000"), p.MJD(), p.Alt, lat, lon, formatBool(p.Total), formatBool(p.Saa))
 			fmt.Fprintln(w)
 		}
 	}
