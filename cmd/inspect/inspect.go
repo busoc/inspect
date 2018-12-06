@@ -191,7 +191,6 @@ func main() {
 	info := flag.Bool("info", false, "print info about the given TLE")
 	config := flag.Bool("config", false, "use configuration file")
 	version := flag.Bool("version", false, "print version and exit")
-	// join := flag.Bool("j", false, "")
 	flag.Parse()
 
 	if *version {
@@ -213,22 +212,11 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		// var last time.Time
-		infos, elapsed := t.Infos(), s.Period.Duration
-		for x, i := range infos {
-			if elapsed <= 0 {
-				break
-			}
-			b := i.When.Add(s.Interval.Duration).Truncate(s.Interval.Duration)
-			e := b.Add(elapsed)
-			if x < len(infos)-1 {
-				n := infos[x+1]
-				e = n.When.Add(s.Interval.Duration).Truncate(s.Interval.Duration).Add(-s.Interval.Duration)
-			}
-			delta := e.Sub(b)
-			elapsed -= delta
+
+		for _, i := range t.Infos(s.Period.Duration, s.Interval.Duration) {
+			delta := i.Ends.Sub(i.Starts)
 			c := delta / s.Interval.Duration
-			fmt.Printf(row, i.Sid, i.When.Format(tfmt), b.Format(tfmt), e.Format(tfmt), delta, c)
+			fmt.Printf(row, i.Sid, i.When.Format(tfmt), i.Starts.Format(tfmt), i.Ends.Format(tfmt), delta, c)
 			fmt.Println()
 		}
 		return

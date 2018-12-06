@@ -50,15 +50,30 @@ func Open(files []string, id int) (*Trajectory, error) {
 
 type Info struct {
 	Sid int
-	When time.Time
+
+	When   time.Time
+	Starts time.Time
+	Ends   time.Time
 }
 
-func (t *Trajectory) Infos() []*Info {
+func (t *Trajectory) Infos(period, interval time.Duration) []*Info {
 	var is []*Info
 	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
-	for _, e := range t.elements {
+
+	period += interval
+	for x, e := range t.elements {
+		if period <= 0 {
+			break
+		}
 		i := Info{Sid: e.Sid, When: e.When}
+		i.Starts = e.When.Add(interval).Truncate(interval)
+		i.Ends = i.Starts.Add(period)
+		if x < len(t.elements)-1 {
+			n := t.elements[x+1]
+			i.Ends = n.When.Add(interval).Truncate(interval).Add(interval)
+		}
 		is = append(is, &i)
+		period -= i.Ends.Sub(i.Starts)
 	}
 	return is
 }
@@ -71,17 +86,20 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, err
 	q := make(chan *Result)
 	go func() {
 		defer close(q)
-
 		for i := 0; i < len(t.elements); i++ {
+			if p < 0 {
+				return
+			}
 			curr := t.elements[i]
 			period := p
-			if j := i + 1; j < len(t.elements) {
-				diff := t.elements[j].When.Sub(curr.When)
-				period = diff
-				p -= diff
+			if len(t.elements) > 1 {
+				curr.Base = curr.When.Add(s).Truncate(s)
+				if j := i+1; j < len(t.elements) {
+					next := t.elements[j]
+					period = next.When.Add(s).Truncate(s).Sub(curr.Base)
+					p -= period
+				}
 			}
-			log.Printf("trajectory prediction from %s to %s", curr.When, curr.When.Add(period))
-			// TODO: first time should be the last time of previous element + by the step (s) value
 			r, err := curr.Predict(period, s, saa)
 			if err != nil {
 				log.Println(err)

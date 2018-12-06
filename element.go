@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	// "log"
 
 	"github.com/busoc/celest/coord"
 	"github.com/busoc/celest/sgp"
@@ -88,6 +89,8 @@ type Element struct {
 	JD   float64
 	JDF  float64
 
+	Base time.Time
+
 	//Elements of row#1
 	Year      int
 	Doy       float64
@@ -161,6 +164,11 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	)
 	delta := s.Seconds() / time.Minute.Seconds()
 	var when float64
+	if !e.Base.IsZero() {
+		delta := e.Base.Sub(e.When)
+		when = delta.Seconds() / time.Minute.Seconds()
+		// log.Printf("delta between start and base: %s", delta)
+	}
 	for elapsed := time.Duration(0); elapsed < p; elapsed += s {
 		ps, _, err := sgp.SGP4(els, when)
 		if err != nil {
