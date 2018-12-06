@@ -48,6 +48,21 @@ func Open(files []string, id int) (*Trajectory, error) {
 	return &t, nil
 }
 
+type Info struct {
+	Sid int
+	When time.Time
+}
+
+func (t *Trajectory) Infos() []*Info {
+	var is []*Info
+	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
+	for _, e := range t.elements {
+		i := Info{Sid: e.Sid, When: e.When}
+		is = append(is, &i)
+	}
+	return is
+}
+
 func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, error) {
 	if p < s {
 		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)

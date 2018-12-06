@@ -95,8 +95,8 @@ Options:
   -360             longitude are given in range of [0:360[ instead of ]-180:180[
   -dms             convert latitude and longitude to DD°MIN'SEC'' format
   -config          load settings from a configuration file
-  -listen          generate trajectories from HTTP requests
 	-version         print inspect version and exit
+  -info            print info about the given TLE
   -help            print this message and exit
 
 Examples:
@@ -188,9 +188,10 @@ func main() {
 	flag.Var(&s.Period, "d", "time range")
 	flag.Var(&s.Interval, "i", "time interval")
 	flag.StringVar(&s.File, "w", "", "write trajectory to file (stdout if not provided)")
+	info := flag.Bool("info", false, "print info about the given TLE")
 	config := flag.Bool("config", false, "use configuration file")
-	listen := flag.Bool("listen", false, "run a webserver")
 	version := flag.Bool("version", false, "print version and exit")
+	// join := flag.Bool("j", false, "")
 	flag.Parse()
 
 	if *version {
@@ -202,13 +203,37 @@ func main() {
 		flag.Usage()
 	}
 
-	if *listen {
-		if err := http.ListenAndServe(flag.Arg(0), Handle(s)); err != nil {
+	sources := flag.Args()
+	if *info {
+		const (
+			row = "%d | %s | %s | %s | %12s | %d"
+			tfmt = "2006-01-02 15:04:05"
+		)
+		t, err := fetchTLE(sources, s.Temp, s.Sid)
+		if err != nil {
 			log.Fatalln(err)
 		}
+		// var last time.Time
+		infos, elapsed := t.Infos(), s.Period.Duration
+		for x, i := range infos {
+			if elapsed <= 0 {
+				break
+			}
+			b := i.When.Add(s.Interval.Duration).Truncate(s.Interval.Duration)
+			e := b.Add(elapsed)
+			if x < len(infos)-1 {
+				n := infos[x+1]
+				e = n.When.Add(s.Interval.Duration).Truncate(s.Interval.Duration).Add(-s.Interval.Duration)
+			}
+			delta := e.Sub(b)
+			elapsed -= delta
+			c := delta / s.Interval.Duration
+			fmt.Printf(row, i.Sid, i.When.Format(tfmt), b.Format(tfmt), e.Format(tfmt), delta, c)
+			fmt.Println()
+		}
+		return
 	}
 
-	sources := flag.Args()
 	if *config {
 		if err := s.Update(flag.Arg(0)); err != nil {
 			log.Fatalln(err)
