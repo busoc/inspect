@@ -78,7 +78,7 @@ func (t *Trajectory) Infos(period, interval time.Duration) []*Info {
 	return is
 }
 
-func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, error) {
+func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan *Result, error) {
 	if p < s {
 		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
 	}
@@ -92,7 +92,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape) (<-chan *Result, err
 			}
 			curr := t.elements[i]
 			period := p
-			if len(t.elements) > 1 {
+			if len(t.elements) > 1 || delay {
 				curr.Base = curr.When.Add(s).Truncate(s)
 				if j := i+1; j < len(t.elements) {
 					next := t.elements[j]

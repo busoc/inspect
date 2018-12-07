@@ -10,9 +10,9 @@ function distance(latlon) {
   y0 = ((n+alt) * cos(lat) * sin(lon));
   z0 = ((n*(1-excentricity) + alt) * sin (lat));
 
-  alt = $12;
-  lat = $13 * deg2rad;
-  lon = $14 * deg2rad;
+  alt = $11;
+  lat = $12 * deg2rad;
+  lon = $13 * deg2rad;
 
   si = sin(lat) * sin(lat);
   n = radius * (1-flattening*(2-flattening)*si) ** -0.5;
@@ -25,7 +25,7 @@ function distance(latlon) {
   dist = sqrt(diff)
 
   if (latlon==1) {
-    printf(row, NR, $1, $3, $4, $5, $10, $12, $13, $14, dist)
+    printf(row, NR, $1, $3, $4, $5, $9, $11, $12, $13, dist)
   } else {
     printf(row, NR, $2, z0, x0, y0, $9, z1, x1, y1, dist)
   }
@@ -38,7 +38,7 @@ BEGIN {
   flattening = 0.003352813178;
   pi = 3.14159265358979323846264338327950288419716939937510582097494459;
   deg2rad = pi / 180.0;
-  row = "%5d || %s | %9.5f | %9.5f | %9.5f || %s | %9.5f | %9.5f | %9.5f || %9.5fkm\n"
+  row = "%5d || %s | %12.5f | %12.5f | %12.5f || %s | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
   # row = "%5d || %12.6f | %12.5f | %12.5f | %12.5f || %12.6f | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
   avg = 0
   min = 0
@@ -46,11 +46,14 @@ BEGIN {
   latlon = 1
   rc = 0
 } {
-  if (substr($1, 1, 19) == substr($10, 1, 19)) {
+  if (substr($1, 1, 19) == substr($9, 1, 19)) {
     rc++
     avg += distance(latlon)
   }
 }
 END {
+  if (rc == 0) {
+    rc++
+  }
   printf("average distance: %12.2fkm\n", avg/rc)
 }

@@ -188,6 +188,7 @@ func main() {
 	flag.Var(&s.Period, "d", "time range")
 	flag.Var(&s.Interval, "i", "time interval")
 	flag.StringVar(&s.File, "w", "", "write trajectory to file (stdout if not provided)")
+	delay := flag.Bool("y", false, "")
 	info := flag.Bool("info", false, "print info about the given TLE")
 	config := flag.Bool("config", false, "use configuration file")
 	version := flag.Bool("version", false, "print version and exit")
@@ -240,7 +241,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	rs, err := t.Predict(s.Period.Duration, s.Interval.Duration, &s.Area)
+	rs, err := t.Predict(s.Period.Duration, s.Interval.Duration, &s.Area, *delay)
 	if err != nil {
 		log.Fatalln(err)
 	}
