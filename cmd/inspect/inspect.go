@@ -320,5 +320,8 @@ func transform(p *celest.Point, syst string) *celest.Point {
 		return &g
 	case "teme", "eci":
 		return p
+	case "ecef":
+		g := p.ECEF()
+		return &g
 	}
 }

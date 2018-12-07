@@ -1,4 +1,4 @@
-function distance(latlon) {
+function distance() {
   alt = $3;
   lat = $4 * deg2rad;
   lon = $5 * deg2rad;
@@ -14,6 +14,10 @@ function distance(latlon) {
   lat = $12 * deg2rad;
   lon = $13 * deg2rad;
 
+  if (alt == 0 || lat == 0 || lon == 0) {
+    return 0
+  }
+
   si = sin(lat) * sin(lat);
   n = radius * (1-flattening*(2-flattening)*si) ** -0.5;
 
@@ -24,31 +28,44 @@ function distance(latlon) {
   diff = ((x1-x0) ** 2) + ((y1-y0) ** 2) + ((z1-z0) ** 2)
   dist = sqrt(diff)
 
-  if (latlon==1) {
-    printf(row, NR, $1, $3, $4, $5, $9, $11, $12, $13, dist)
-  } else {
-    printf(row, NR, $2, z0, x0, y0, $9, z1, x1, y1, dist)
-  }
+  printf(row, NR, $2, $3, $4, $5, $10, $11, $12, $13, dist)
+
+  return dist
+}
+
+function ecefDistance() {
+  diff = (($12-$4) ** 2) + (($13-$5) ** 2) + (($11-$3) ** 2)
+  dist = sqrt(diff)
+
   return dist
 }
 
 BEGIN {
-  radius = 6378.1363;
+  radius = 6378.136;
   excentricity = 0.006694385;
   flattening = 0.003352813178;
   pi = 3.14159265358979323846264338327950288419716939937510582097494459;
   deg2rad = pi / 180.0;
-  row = "%5d || %s | %12.5f | %12.5f | %12.5f || %s | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
-  # row = "%5d || %12.6f | %12.5f | %12.5f | %12.5f || %12.6f | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
+  row = "%5d || %.5f | %12.5f | %12.5f | %12.5f || %.5f | %12.5f | %12.5f | %12.5f || %12.5fkm\n"
   avg = 0
   min = 0
   max = 0
-  latlon = 1
   rc = 0
 } {
-  if (substr($1, 1, 19) == substr($9, 1, 19)) {
+  delta = $2-$10
+  if (delta < 0) {
+    delta = -delta
+  }
+  if (substr($1, 1, 19) == substr($9, 1, 19) || delta <= 0.00001) {
     rc++
-    avg += distance(latlon)
+    dist = 0
+    if (mode == "ecef") {
+      dist = ecefDistance()
+    } else {
+      dist = distance()
+    }
+    avg += dist
+    printf(row, NR, $2, $3, $4, $5, $10, $11, $12, $13, dist)
   }
 }
 END {

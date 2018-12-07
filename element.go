@@ -42,6 +42,16 @@ func (p Point) MJD() float64 {
 	return p.Epoch - deltaCnesJD
 }
 
+func (p Point) ECEF() Point {
+	if p.converted {
+		return p
+	}
+	n := p
+	n.converted = true
+	n.Lat, n.Lon, n.Alt = p.toECEF()
+	return n
+}
+
 func (p Point) Classic() Point {
 	if p.converted {
 		return p

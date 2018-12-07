@@ -43,7 +43,7 @@ func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 
 func (pt printer) rawFormat() bool {
 	syst := strings.ToLower(pt.Syst)
-	return syst == "teme" || syst == "eci"
+	return syst == "teme" || syst == "eci" || syst == "ecef"
 }
 
 func (pt printer) transform(p *celest.Point) *celest.Point {
@@ -51,14 +51,15 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 }
 
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
+	fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "#time, mjd, altitude, latitude, longitude, eclipse, saa, epoch")
+
 	ws := csv.NewWriter(w)
 	var m meta
 	for r := range ps {
 		m.TLE++
 		m.Points += len(r.Points)
-
-		fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
-		fmt.Fprintln(w)
 		fmt.Fprintf(w, "#%s", r.TLE[0])
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "#%s", r.TLE[1])
