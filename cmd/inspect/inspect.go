@@ -315,13 +315,16 @@ func transform(p *celest.Point, syst string) *celest.Point {
 	case "geocentric":
 		g := p.Geocentric()
 		return &g
-	case "geodetic", "geodesic":
+	case "geodetic":
 		g := p.Geodetic()
 		return &g
 	case "teme", "eci":
 		return p
-	case "ecef":
-		g := p.ECEF()
+	case "dublin":
+		g := p.Dublin()
+		return &g
+	case "cnes":
+		g := p.CNES()
 		return &g
 	}
 }

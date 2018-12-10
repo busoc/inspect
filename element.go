@@ -42,13 +42,25 @@ func (p Point) MJD() float64 {
 	return p.Epoch - deltaCnesJD
 }
 
-func (p Point) ECEF() Point {
+func (p Point) CNES() Point {
 	if p.converted {
 		return p
 	}
 	n := p
 	n.converted = true
 	n.Lat, n.Lon, n.Alt = p.toECEF()
+	return n
+}
+
+func (p Point) Dublin() Point {
+	if p.converted {
+		return p
+	}
+	n := p
+	n.converted = true
+	vs := []float64{p.Lat, p.Lon, p.Alt}
+	cs := ecefCoordinates(gstTime(p.When), vs)
+	n.Lat, n.Lon, n.Alt = cs[0], cs[1], cs[2]
 	return n
 }
 

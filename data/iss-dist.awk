@@ -4,7 +4,7 @@ function distance() {
   lon = $5 * deg2rad;
 
   si = sin(lat) * sin(lat);
-  n = radius * (1-flattening*(2-flattening)*si) ** -0.5;
+  n = one * (1-flattening*(2-flattening)*si) ** -0.5;
 
   x0 = ((n+alt) * cos(lat) * cos(lon));
   y0 = ((n+alt) * cos(lat) * sin(lon));
@@ -19,7 +19,7 @@ function distance() {
   }
 
   si = sin(lat) * sin(lat);
-  n = radius * (1-flattening*(2-flattening)*si) ** -0.5;
+  n = two * (1-flattening*(2-flattening)*si) ** -0.5;
 
   x1 = ((n+alt) * cos(lat) * cos(lon));
   y1 = ((n+alt) * cos(lat) * sin(lon));
@@ -27,8 +27,6 @@ function distance() {
 
   diff = ((x1-x0) ** 2) + ((y1-y0) ** 2) + ((z1-z0) ** 2)
   dist = sqrt(diff)
-
-  printf(row, NR, $2, $3, $4, $5, $10, $11, $12, $13, dist)
 
   return dist
 }
@@ -41,7 +39,7 @@ function ecefDistance() {
 }
 
 BEGIN {
-  radius = 6378.136;
+  defaultRadius = 6378.136;
   excentricity = 0.006694385;
   flattening = 0.003352813178;
   pi = 3.14159265358979323846264338327950288419716939937510582097494459;
@@ -51,12 +49,15 @@ BEGIN {
   min = 0
   max = 0
   rc = 0
+
+  one = one == 0 ? defaultRadius : one
+  two = two == 0 ? defaultRadius : two
 } {
   delta = $2-$10
   if (delta < 0) {
     delta = -delta
   }
-  if (substr($1, 1, 19) == substr($9, 1, 19) || delta <= 0.00001) {
+  if (substr($1, 1, 19) == substr($9, 1, 19) || ($2 > 0 && $3 > 0 && delta <= 0.00001)) {
     rc++
     dist = 0
     if (mode == "ecef") {
@@ -65,7 +66,9 @@ BEGIN {
       dist = distance()
     }
     avg += dist
-    printf(row, NR, $2, $3, $4, $5, $10, $11, $12, $13, dist)
+    if (dist > 0) {
+      printf(row, NR, $2, $3, $4, $5, $10, $11, $12, $13, dist)
+    }
   }
 }
 END {
