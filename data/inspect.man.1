@@ -4,7 +4,22 @@
 inspect \- Orbit projection tool
 .
 .SH EXAMPLES
-TO BE WRITTEN - COPIED from inspect --help
+.EX
+calculate a trajectory over 24 hours for the default satellite (25544) from the
+latest TLE available on celestrak:
+.RS
+.B inspect -d 24h -i 10s https://celestrak.com/NORAD/elements/stations.txt
+.RE
+.EE
+.LP
+.EX
+calculate a trajectory over 72 hours for the default satellite (25544) from the
+a local TLE using geodetic coordinates. A position will be computed every
+seconds:
+.RS
+.B inspect -c geodetic -dms -d 72h -i 1s /tmp/tle-201481119.txt
+.RE
+.EE
 .
 .SH SEE ALSO
 assist(1), assist.toml(5), assist.list(5), inspect.toml(5), trajectory.csv(5)
