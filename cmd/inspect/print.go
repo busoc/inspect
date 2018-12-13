@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,7 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
 	fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
 	fmt.Fprintln(w)
+	fmt.Fprintln(w, "#" + strings.Join(os.Args, " "))
 	fmt.Fprintln(w, "#time, mjd, altitude, latitude, longitude, eclipse, saa, epoch")
 
 	ws := csv.NewWriter(w)
