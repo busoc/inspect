@@ -1,0 +1,17 @@
+file      = "/var/run/asim/trajectory.csv"
+tle       = "https://www.celestrak.com/NORAD/elements/stations.txt"
+duration  = "120h"
+interval  = "1s"
+satellite = 25544
+area      = {
+  north = -5,
+  east  = 30,
+  south = -60,
+  west  = -80,
+}
+
+[format]
+format  = "csv"
+frames  = ""
+toDMS   = false
+to360   = false

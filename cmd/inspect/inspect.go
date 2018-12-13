@@ -27,8 +27,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "1.0.0"
-	BuildTime = "2018-11-28 13:55:00"
+	Version   = "1.0.1"
+	BuildTime = "2018-12-10 09:27:00"
 )
 
 const helpText = `Satellite trajectory prediction tool with Eclipse and SAA crossing.
