@@ -17,6 +17,7 @@ const (
 
 type Result struct {
 	TLE    []string
+	When   time.Time
 	Epoch  float64
 	Points []*Point
 }

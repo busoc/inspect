@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -60,6 +61,7 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error)
 	ws := csv.NewWriter(w)
 	var m meta
 	for r := range ps {
+		log.Printf("TLE epoch: %s", r.When.Format(time.RFC1123))
 		m.TLE++
 		m.Points += len(r.Points)
 		fmt.Fprintf(w, "#%s", r.TLE[0])
@@ -130,6 +132,7 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error
 	var m meta
 	var saa, eclipse *celest.Point
 	for r := range ps {
+		log.Printf("TLE epoch: %s", r.When.Format(time.RFC1123))
 		m.TLE++
 		m.Points += len(r.Points)
 		for _, p := range r.Points {

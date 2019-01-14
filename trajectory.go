@@ -6,8 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"math"
 	"sort"
-	// "strings"
 	"time"
 )
 
@@ -33,7 +33,7 @@ type Trajectory struct {
 	elements []*Element
 }
 
-func Open(files []string, id int) (*Trajectory, error) {
+func Open(files []string, id int, bstar float64) (*Trajectory, error) {
 	var t Trajectory
 	for _, f := range files {
 		r, err := os.Open(f)
@@ -41,7 +41,7 @@ func Open(files []string, id int) (*Trajectory, error) {
 			return nil, err
 		}
 		defer r.Close()
-		if err := t.Scan(r, id); err != nil {
+		if err := t.Scan(r, id, bstar); err != nil {
 			return nil, err
 		}
 	}
@@ -101,6 +101,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 				}
 			}
 			r, err := curr.Predict(period, s, saa)
+			r.When = curr.When
 			if err != nil {
 				log.Println(err)
 				return
@@ -111,7 +112,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 	return q, nil
 }
 
-func (t *Trajectory) Scan(r io.Reader, sid int) error {
+func (t *Trajectory) Scan(r io.Reader, sid int, bstar float64) error {
 	s := bufio.NewScanner(r)
 	for s.Scan() {
 		rs := make([]string, tleRows)
@@ -138,46 +139,12 @@ func (t *Trajectory) Scan(r io.Reader, sid int) error {
 		if err != nil && e.Sid == sid {
 			return err
 		}
+		if math.Abs(e.BStar) > math.Abs(bstar) {
+			return fmt.Errorf("bstar drag coefficient exceed limit: %.6f", e.BStar)
+		}
 		if e.Sid == sid {
 			t.elements = append(t.elements, e)
 		}
 	}
 	return s.Err()
 }
-
-// func (t *Trajectory) Scan(r io.Reader, sid int) error {
-// 	s := bufio.NewScanner(r)
-// 	for {
-// 		if !s.Scan() {
-// 			break
-// 		}
-// 		x := s.Text()
-// 		if strings.HasPrefix(x, "#") {
-// 			continue
-// 		}
-// 		if len(x) == emptyLen {
-// 			// TBD - ignore the empty line (name of satellite)
-// 		}
-// 		rs := make([]string, tleRows)
-// 		for i := range rs {
-// 			if !s.Scan() {
-// 				return MissingRowError(i + 1)
-// 			}
-// 			rs[i] = s.Text()
-// 			if n := len(rs[i]); n != tleLen {
-// 				return InvalidLenError(n)
-// 			}
-// 		}
-// 		e, err := NewElement(rs[0], rs[1])
-// 		if err != nil && e == nil {
-// 			continue
-// 		}
-// 		if err != nil && e.Sid == sid {
-// 			return err
-// 		}
-// 		if e.Sid == sid {
-// 			t.elements = append(t.elements, e)
-// 		}
-// 	}
-// 	return s.Err()
-// }
