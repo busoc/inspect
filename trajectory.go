@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"math"
 	"sort"
 	"time"
@@ -31,21 +30,7 @@ func (e InvalidLenError) Error() string {
 
 type Trajectory struct {
 	elements []*Element
-}
-
-func Open(files []string, id int, bstar float64) (*Trajectory, error) {
-	var t Trajectory
-	for _, f := range files {
-		r, err := os.Open(f)
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		if err := t.Scan(r, id, bstar); err != nil {
-			return nil, err
-		}
-	}
-	return &t, nil
+	Base time.Time
 }
 
 type Info struct {
@@ -83,6 +68,18 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
 	}
 	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
+	if !t.Base.IsZero() {
+		var invalid bool
+		for i := range t.elements {
+			if t.elements[i].When.After(t.Base) {
+				invalid = true
+				break
+			}
+		}
+		if invalid {
+			return nil, fmt.Errorf("given base time before epoch of any given TLE %s", t.Base)
+		}
+	}
 	q := make(chan *Result)
 	go func() {
 		defer close(q)
@@ -98,6 +95,15 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 					next := t.elements[j]
 					period = next.When.Add(s).Truncate(s).Sub(curr.Base)
 					p -= period
+				}
+			}
+			if !t.Base.IsZero() {
+				s, e := curr.Range(period)
+				if e.Before(t.Base) {
+					continue
+				}
+				if s.Equal(t.Base) || s.Before(t.Base) {
+					curr.Base = t.Base
 				}
 			}
 			r, err := curr.Predict(period, s, saa)

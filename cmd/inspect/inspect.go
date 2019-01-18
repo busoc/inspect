@@ -27,8 +27,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "1.0.2"
-	BuildTime = "2019-01-14 09:40:00"
+	Version   = "1.0.3"
+	BuildTime = "2019-01-18 13:20:00"
 )
 
 const helpText = `Satellite trajectory prediction tool with Eclipse and SAA crossing.
@@ -192,6 +192,7 @@ func main() {
 	flag.Var(&s.Period, "d", "time range")
 	flag.Var(&s.Interval, "i", "time interval")
 	flag.StringVar(&s.File, "w", "", "write trajectory to file (stdout if not provided)")
+	base := flag.String("b", "", "base time")
 	delay := flag.Bool("y", false, "")
 	info := flag.Bool("info", false, "print info about the given TLE")
 	config := flag.Bool("config", false, "use configuration file")
@@ -207,6 +208,17 @@ func main() {
 		flag.Usage()
 	}
 
+	var bt time.Time
+	switch b, err := time.Parse(time.RFC3339, *base); {
+	case err == nil:
+		bt = b
+	case err != nil && *base == "-":
+	case err != nil && *base == "":
+		bt = time.Now()
+	default:
+		log.Fatalln("invalid format %s", *base)
+	}
+
 	sources := flag.Args()
 	if *info {
 		const (
@@ -217,7 +229,6 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-
 		for _, i := range t.Infos(s.Period.Duration, s.Interval.Duration) {
 			delta := i.Ends.Sub(i.Starts)
 			c := delta / s.Interval.Duration
@@ -242,10 +253,13 @@ func main() {
 	log.Printf("settings: bstar-drag coefficient limit %.6f", s.BStar)
 	log.Printf("settings: crossing area %s", s.Area.String())
 	log.Printf("settings: latlon system %s", s.Print.Syst)
+
 	t, err := fetchTLE(sources, s.Temp, s.Sid, s.BStar)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	t.Base = bt
+
 	rs, err := t.Predict(s.Period.Duration, s.Interval.Duration, &s.Area, *delay)
 	if err != nil {
 		log.Fatalln(err)

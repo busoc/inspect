@@ -152,6 +152,16 @@ func NewElement(row1, row2 string) (*Element, error) {
 	return &e, nil
 }
 
+func (e Element) Range(i time.Duration) (time.Time, time.Time) {
+	var t time.Time
+	if e.Base.IsZero() {
+		t = e.When
+	} else {
+		t = e.Base
+	}
+	return t, t.Add(i)
+}
+
 func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	els := sgp.NewElsetrec()
 	defer sgp.DeleteElsetrec(els)
