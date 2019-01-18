@@ -32,9 +32,26 @@ type printer struct {
 	Round  bool   `toml:"to360"`  //360
 }
 
-func (pt printer) Print(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
+func (pt printer) Print(w io.Writer, ps <-chan *celest.Result, s Settings) (*meta, error) {
 	switch strings.ToLower(pt.Format) {
 	case "csv":
+		fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "#" + strings.Join(os.Args, " "))
+		fmt.Fprintf(w, "#trajectory duration %s", s.Period.Duration)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#trajectory interval %s", s.Interval.Duration)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#satellite identifier %d", s.Sid)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#bstar-drag coefficient limit %.6f", s.BStar)
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#crossing area %s", s.Area.String())
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "#latlon system %s", s.Print.Syst)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "#time, mjd, altitude, latitude, longitude, eclipse, saa, epoch")
+
 		return pt.printCSV(w, ps)
 	case "", "pipe":
 		return pt.printPipe(w, ps)
@@ -53,11 +70,6 @@ func (pt printer) transform(p *celest.Point) *celest.Point {
 }
 
 func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error) {
-	fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "#" + strings.Join(os.Args, " "))
-	fmt.Fprintln(w, "#time, mjd, altitude, latitude, longitude, eclipse, saa, epoch")
-
 	ws := csv.NewWriter(w)
 	var m meta
 	for r := range ps {

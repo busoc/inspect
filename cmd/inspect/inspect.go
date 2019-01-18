@@ -261,7 +261,7 @@ func main() {
 	default:
 		log.Fatalln(err)
 	}
-	m, err := s.Print.Print(w, rs)
+	m, err := s.Print.Print(w, rs, s)
 	if err != nil {
 		log.Fatalln(err)
 	}
