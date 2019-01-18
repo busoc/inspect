@@ -254,7 +254,12 @@ func main() {
 	digest := md5.New()
 	switch f, err := os.Create(s.File); {
 	case err == nil:
-		defer f.Close()
+		defer func() {
+			if i, err := f.Stat(); err == nil {
+				log.Printf("file: %s (%s, %dKB)", s.File, i.ModTime().Format(time.RFC1123), i.Size()>>10)
+			}
+			f.Close()
+		}()
 		w = io.MultiWriter(f, digest)
 	case err != nil && s.File == "":
 		w = io.MultiWriter(os.Stdout, digest)
