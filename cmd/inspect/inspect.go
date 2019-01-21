@@ -212,8 +212,8 @@ func main() {
 	switch b, err := time.Parse(time.RFC3339, *base); {
 	case err == nil:
 		bt = b
-	case err != nil && *base == "-":
-	case err != nil && *base == "":
+	case err != nil && (*base == "-" || *base == "epoch" || *base == "tle"):
+	case err != nil && (*base == "" || *base == "now"):
 		bt = time.Now()
 	default:
 		log.Fatalln("invalid format %s", *base)
