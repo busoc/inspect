@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"time"
-	// "log"
 
 	"github.com/busoc/celest/coord"
 	"github.com/busoc/celest/sgp"
@@ -97,7 +96,6 @@ func (p Point) Geodetic() Point {
 
 func (p Point) toECEF() (float64, float64, float64) {
 	vs := []float64{p.Lat, p.Lon, p.Alt}
-	// cs := ecefCoordinates(gstTime(p.When), vs)
 	cs := ecefCoordinates(gstTimeBis(p.Epoch), vs)
 	return cs[0], cs[1], cs[2]
 }
