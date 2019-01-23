@@ -213,6 +213,9 @@ func printInfos(sources []string, s *Settings) error {
 }
 
 func fetchTLE(ps []string, copydir string, sid int, bstar float64) (*celest.Trajectory, error) {
+	if len(ps) == 0 {
+		return nil, fmt.Errorf("no input files given")
+	}
 	var t celest.Trajectory
 	digest := md5.New()
 	if resp, err := http.Get(ps[0]); err == nil {
