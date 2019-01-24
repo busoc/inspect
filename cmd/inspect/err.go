@@ -18,7 +18,7 @@ const (
 	TLEFormatErrCode
 	TLEDataErrCode
 	PropagationErrCode
-	BStarErrCode
+	DragErrCode
 )
 
 type Error struct {
@@ -83,6 +83,11 @@ func checkError(err, parent error) error {
 		return &Error{
 			Cause: err,
 			Code:  PropagationErrCode,
+		}
+	case celest.DragError:
+		return &Error {
+			Cause: err,
+			Code: DragErrCode,
 		}
 	case celest.InvalidLenError, celest.MissingRowError:
 		return &Error{
