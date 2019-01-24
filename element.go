@@ -15,6 +15,7 @@ const (
 )
 
 type Result struct {
+	Err    error
 	TLE    []string
 	When   time.Time
 	Epoch  float64
@@ -70,7 +71,7 @@ func (p Point) Classic() Point {
 	}
 	n := p
 	n.Lat, n.Lon, n.Alt = ConvertTEME(p.When, []float64{n.Lat, n.Lon, n.Alt})
-	n.Alt = n.Alt/1000
+	n.Alt = n.Alt / 1000
 	return n
 }
 
@@ -185,7 +186,9 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	wg84 := sgp.Gravconsttype(sgp.Wgs84)
 	// TODO: move sgp4init in sgp package with func Init(e Elsetrec)
 	if ok := sgp.Sgp4init(wg84, 'i', int(els.GetNumber()), epoch, els.GetBstar(), els.GetMean1(), els.GetMean2(), els.GetExcentricity(), els.GetPerigee(), els.GetInclination(), els.GetAnomaly(), els.GetMotion(), els.GetAscension(), els); !ok {
-		return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
+		// return nil, fmt.Errorf("fail to initialize projection: %d", els.GetError())
+		err := PropagationError(els.GetError())
+		return &Result{TLE: e.TLE, Epoch: epoch, Err: err}, err
 	}
 
 	var (
@@ -203,7 +206,8 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	for elapsed := time.Duration(0); elapsed < p; elapsed += s {
 		ps, _, err := sgp.SGP4(els, when)
 		if err != nil {
-			return nil, err
+			err := PropagationError(els.GetError())
+			return &Result{TLE: e.TLE, Epoch: epoch, Points: ts, Err: err}, err
 		}
 		// TODO: wrap Invjday in sgp package with func Date(jd, jdf) time.Time
 		var (
@@ -267,7 +271,7 @@ func scanLine1(r string, e *Element) error {
 		Control   string
 	}{}
 	if _, err := fmt.Sscanf(r, row1, &r1.Line, &r1.Satellite, &r1.Class, &r1.Label, &r1.Year, &r1.Doy, &r1.Mean1, &r1.Mean2, &r1.Mean2Exp, &r1.BStar, &r1.BStarExp, &r1.Ephemeris, &r1.Control); err != nil || r1.Line != 1 {
-		return fmt.Errorf("fail to scan row#1: %s", err)
+		return &ParseError{row: 1, cause: err}
 	}
 	mean1 := r1.Mean1 / (xpdotp * minPerDays)
 	mean2 := ((r1.Mean2 / 100000) * math.Pow10(r1.Mean2Exp)) / (xpdotp * minPerDays * minPerDays)
@@ -313,7 +317,7 @@ func scanLine2(r string, e *Element) error {
 	}{}
 
 	if _, err := fmt.Sscanf(r, row2, &r2.Line, &r2.Satellite, &r2.Inclination, &r2.Ascension, &r2.Excentricity, &r2.Perigee, &r2.Anomaly, &r2.Motion, &r2.Revolution, &r2.Control); err != nil || r2.Line != 2 {
-		return fmt.Errorf("fail to scan row#2: %s", err)
+		return &ParseError{row: 2, cause: err}
 	}
 	e.Inclination = r2.Inclination * deg2rad
 	e.Ascension = r2.Ascension * deg2rad

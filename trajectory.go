@@ -2,9 +2,9 @@ package celest
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"sort"
 	"time"
@@ -15,6 +15,49 @@ const (
 	tleLen   = 69
 	tleRows  = 2
 )
+
+var (
+	ErrShortPeriod = errors.New("propagation period shorter than step")
+	ErrBaseTime    = errors.New("no propagation beyond base time")
+)
+
+type ParseError struct {
+	row   int
+	cause error
+}
+
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("fail to scan row #%d: %v", e.row, e.cause)
+}
+
+type PropagationError int
+
+func (e PropagationError) Error() string {
+	var msg string
+	switch int(e) {
+	case 1:
+		msg = "mean elements, ecc >= 1.0 or ecc < -0.001 or a < 0.95"
+	case 2:
+		msg = "mean motion less than 0.0"
+	case 3:
+		msg = "pert elements, ecc < 0.0  or  ecc > 1.0"
+	case 4:
+		msg = "semi-latus rectum < 0.0"
+	case 5:
+		msg = "epoch elements are sub-orbital"
+	case 6:
+		msg = "satellite has decayed"
+	default:
+		msg = "propagation error"
+	}
+	return msg
+}
+
+type DragError float64
+
+func (e DragError) Error() string {
+	return fmt.Sprintf("bstar drag coefficient exceed limit: %.6f", float64(e))
+}
 
 type MissingRowError int
 
@@ -30,7 +73,7 @@ func (e InvalidLenError) Error() string {
 
 type Trajectory struct {
 	elements []*Element
-	Base time.Time
+	Base     time.Time
 }
 
 type Info struct {
@@ -65,7 +108,7 @@ func (t *Trajectory) Infos(period, interval time.Duration) []*Info {
 
 func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan *Result, error) {
 	if p < s {
-		return nil, fmt.Errorf("period shorter than step (%s < %s)", p, s)
+		return nil, ErrShortPeriod
 	}
 	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
 	if !t.Base.IsZero() {
@@ -77,7 +120,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 			}
 		}
 		if invalid {
-			return nil, fmt.Errorf("given base time before epoch of any given TLE %s", t.Base)
+			return nil, ErrBaseTime
 		}
 	}
 	q := make(chan *Result)
@@ -91,7 +134,7 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 			period := p
 			if len(t.elements) > 1 || delay {
 				curr.Base = curr.When.Add(s).Truncate(s)
-				if j := i+1; j < len(t.elements) {
+				if j := i + 1; j < len(t.elements) {
 					next := t.elements[j]
 					period = next.When.Add(s).Truncate(s).Sub(curr.Base)
 					p -= period
@@ -106,13 +149,12 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 					curr.Base = t.Base
 				}
 			}
-			r, err := curr.Predict(period, s, saa)
+			r, _ := curr.Predict(period, s, saa)
 			r.When = curr.When
-			if err != nil {
-				log.Println(err)
+			q <- r
+			if r.Err != nil {
 				return
 			}
-			q <- r
 		}
 	}()
 	return q, nil
@@ -146,7 +188,7 @@ func (t *Trajectory) Scan(r io.Reader, sid int, bstar float64) error {
 			return err
 		}
 		if math.Abs(e.BStar) > math.Abs(bstar) {
-			return fmt.Errorf("bstar drag coefficient exceed limit: %.6f", e.BStar)
+			return DragError(e.BStar)
 		}
 		if e.Sid == sid {
 			t.elements = append(t.elements, e)

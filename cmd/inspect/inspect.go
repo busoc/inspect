@@ -27,8 +27,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "1.0.3"
-	BuildTime = "2019-01-18 13:20:00"
+	Version   = "1.1.0"
+	BuildTime = "2019-01-24 08:40:00"
 )
 
 type Duration struct {
@@ -52,7 +52,7 @@ func init() {
 	log.SetPrefix(fmt.Sprintf("[%s-%s] ", Program, Version))
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, helpText)
-		os.Exit(EINVALID)
+		os.Exit(0)
 	}
 }
 
@@ -72,7 +72,7 @@ type Settings struct {
 func (s *Settings) Update(f string) error {
 	r, err := os.Open(f)
 	if err != nil {
-		return err
+		return checkError(err, nil)
 	}
 	defer r.Close()
 
@@ -89,7 +89,7 @@ func main() {
 		Sid:      DefaultSid,
 		Period:   Duration{time.Hour * 72},
 		Interval: Duration{time.Minute},
-		BStar: -0.001,
+		BStar:    -0.001,
 	}
 
 	flag.Float64Var(&s.BStar, "bstar", s.BStar, "bstar max")
@@ -158,13 +158,13 @@ func main() {
 
 	t, err := fetchTLE(sources, s.Temp, s.Sid, s.BStar)
 	if err != nil {
-		Exit(err)
+		Exit(checkError(err, nil))
 	}
 	t.Base = bt
 
 	rs, err := t.Predict(s.Period.Duration, s.Interval.Duration, &s.Area, *delay)
 	if err != nil {
-		Exit(err)
+		Exit(checkError(err, nil))
 	}
 	var w io.Writer
 	digest := md5.New()
@@ -180,11 +180,11 @@ func main() {
 	case err != nil && s.File == "":
 		w = io.MultiWriter(os.Stdout, digest)
 	default:
-		Exit(err)
+		Exit(checkError(err, nil))
 	}
 	m, err := s.Print.Print(w, rs, s)
 	if err != nil {
-		Exit(err)
+		Exit(checkError(err, nil))
 	}
 	log.Printf("%d TLE used", m.TLE)
 	log.Printf("%d positions predicted", m.Points)
@@ -196,7 +196,7 @@ func main() {
 
 func printInfos(sources []string, s *Settings) error {
 	const (
-		row = "%d | %s | %s | %s | %12s | %d"
+		row  = "%d | %s | %s | %s | %12s | %d"
 		tfmt = "2006-01-02 15:04:05"
 	)
 	t, err := fetchTLE(sources, s.Temp, s.Sid, s.BStar)
@@ -221,31 +221,34 @@ func fetchTLE(ps []string, copydir string, sid int, bstar float64) (*celest.Traj
 	if resp, err := http.Get(ps[0]); err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("fail to fetch data from %s (%s)", ps[0], resp.Status)
+			return nil, fetchError(ps[0], resp.StatusCode)
 		}
 		var w io.Writer = digest
 		suffix := "-" + time.Now().Format("20060102_150405")
 		if err := os.MkdirAll(copydir, 0755); err != nil && !os.IsExist(err) {
-			return nil, err
+			return nil, checkError(err, nil)
 		}
 		if f, err := os.Create(path.Join(copydir, path.Base(ps[0]+suffix))); err == nil {
 			defer f.Close()
 			w = io.MultiWriter(f, w)
 		}
 		if err := t.Scan(io.TeeReader(resp.Body, w), sid, bstar); err != nil {
-			return nil, err
+			return nil, checkError(err, nil)
 		}
 		log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", ps[0], digest.Sum(nil), resp.Header.Get("last-modified"))
 	} else {
 		for _, p := range ps {
 			r, err := os.Open(p)
 			if err != nil {
-				return nil, err
+				return nil, checkError(err, nil)
 			}
 			if err := t.Scan(io.TeeReader(r, digest), sid, bstar); err != nil {
-				return nil, err
+				return nil, checkError(err, nil)
 			}
-			s, _ := r.Stat()
+			s, err := r.Stat()
+			if err != nil {
+				return nil, checkError(err, nil)
+			}
 			log.Printf("parsing TLE from %s done (md5: %x, last-modified: %s)", p, digest.Sum(nil), s.ModTime().Format(time.RFC1123))
 			r.Close()
 			digest.Reset()

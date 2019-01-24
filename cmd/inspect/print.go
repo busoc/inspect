@@ -15,8 +15,8 @@ import (
 )
 
 type meta struct {
-	TLE      int
-	Points   int
+	TLE    int
+	Points int
 
 	Crossing     int
 	CrossingTime time.Duration
@@ -37,7 +37,7 @@ func (pt printer) Print(w io.Writer, ps <-chan *celest.Result, s Settings) (*met
 	case "csv":
 		fmt.Fprintf(w, "#%s-%s (build: %s)", Program, Version, BuildTime)
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, "#" + strings.Join(os.Args, " "))
+		fmt.Fprintln(w, "#"+strings.Join(os.Args, " "))
 		fmt.Fprintf(w, "#trajectory duration %s", s.Period.Duration)
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "#trajectory interval %s", s.Interval.Duration)
@@ -73,6 +73,9 @@ func (pt printer) printCSV(w io.Writer, ps <-chan *celest.Result) (*meta, error)
 	ws := csv.NewWriter(w)
 	var m meta
 	for r := range ps {
+		if r.Err != nil {
+			return nil, r.Err
+		}
 		log.Printf("TLE epoch: %s", r.When.Format(time.RFC1123))
 		m.TLE++
 		m.Points += len(r.Points)
@@ -144,6 +147,9 @@ func (pt printer) printPipe(w io.Writer, ps <-chan *celest.Result) (*meta, error
 	var m meta
 	var saa, eclipse *celest.Point
 	for r := range ps {
+		if r.Err != nil {
+			return nil, r.Err
+		}
 		log.Printf("TLE epoch: %s", r.When.Format(time.RFC1123))
 		m.TLE++
 		m.Points += len(r.Points)
