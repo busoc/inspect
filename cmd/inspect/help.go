@@ -53,6 +53,7 @@ the output of inspect consists of a tabulated "file". The columns of the file ar
 
 Options:
 
+  -b       DATE    start date
   -c       COORD   coordinate system used (geocentric, geodetic, teme/eci)
   -d       TIME    TIME over which calculate the predicted trajectory
   -f       FORMAT  print predicted trajectory in FORMAT (csv, pipe, json, xml)
@@ -65,7 +66,7 @@ Options:
   -360             longitude are given in range of [0:360[ instead of ]-180:180[
   -dms             convert latitude and longitude to DD°MIN'SEC'' format
   -config          load settings from a configuration file
-	-version         print inspect version and exit
+  -version         print inspect version and exit
   -info            print info about the given TLE
   -help            print this message and exit
 
