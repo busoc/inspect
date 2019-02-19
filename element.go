@@ -11,7 +11,7 @@ import (
 
 const (
 	row1 = "%1d %5d%1s %8s %2d%12f %10f %6f%2d %6f%2d %1d %5s"
-	row2 = "%d %5d %8f %8f %7f %8f %8f %11f%5d%1s"
+	row2 = "%d %5d %8f %8f %7f %8f %8f %10f%5d%1s"
 )
 
 type Result struct {
