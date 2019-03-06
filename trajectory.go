@@ -187,7 +187,7 @@ func (t *Trajectory) Scan(r io.Reader, sid int, bstar float64) error {
 		if err != nil && e.Sid == sid {
 			return err
 		}
-		if math.Abs(e.BStar) > math.Abs(bstar) {
+		if e.Sid == sid && math.Abs(e.BStar) > math.Abs(bstar) {
 			return DragError(e.BStar)
 		}
 		if e.Sid == sid {

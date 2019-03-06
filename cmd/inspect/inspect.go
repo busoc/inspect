@@ -27,8 +27,8 @@ const DefaultSid = 25544
 
 const (
 	Program   = "inspect"
-	Version   = "1.1.0"
-	BuildTime = "2019-01-24 08:40:00"
+	Version   = "1.1.2"
+	BuildTime = "2019-03-06 08:55:00"
 )
 
 type Duration struct {
