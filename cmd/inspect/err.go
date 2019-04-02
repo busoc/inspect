@@ -85,9 +85,9 @@ func checkError(err, parent error) error {
 			Code:  PropagationErrCode,
 		}
 	case celest.DragError:
-		return &Error {
+		return &Error{
 			Cause: err,
-			Code: DragErrCode,
+			Code:  DragErrCode,
 		}
 	case celest.InvalidLenError, celest.MissingRowError:
 		return &Error{

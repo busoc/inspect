@@ -112,42 +112,49 @@ func (t *Trajectory) Predict(p, s time.Duration, saa Shape, delay bool) (<-chan 
 	}
 	sort.Slice(t.elements, func(i, j int) bool { return t.elements[i].When.Before(t.elements[j].When) })
 	if !t.Base.IsZero() {
-		var invalid bool
-		for i := range t.elements {
-			if t.elements[i].When.After(t.Base) {
-				invalid = true
-				break
+		var elements []*Element
+		for i, e := range t.elements {
+			// log.Printf("from: %s, to: %s, base: %s, skip: %t", e.When, e.When.Add(p), t.Base, e.When.Before(t.Base))
+			if e.When.Before(t.Base) && len(t.elements) > 1 {
+				continue
 			}
+			if j := i - 1; j >= 0 && t.elements[j].When.Before(t.Base) {
+				elements = append(elements, t.elements[j])
+			}
+			elements = append(elements, e)
 		}
-		if invalid {
+		if len(elements) == 0 {
 			return nil, ErrBaseTime
 		}
+		if elements[0].When.Before(t.Base) {
+			elements[0].Base = t.Base
+		}
+		if delta := t.Base.Sub(elements[0].When); delta > 0 {
+			p -= delta
+		}
+		t.elements = append(t.elements[:0], elements...)
 	}
 	q := make(chan *Result)
 	go func() {
 		defer close(q)
 		for i := 0; i < len(t.elements); i++ {
-			if p < 0 {
+			if p <= 0 {
 				return
 			}
 			curr := t.elements[i]
 			period := p
 			if len(t.elements) > 1 || delay {
-				curr.Base = curr.When.Add(s).Truncate(s)
+				if !t.Base.IsZero() && !curr.Base.Equal(t.Base) {
+					curr.Base = curr.When.Add(s).Truncate(s)
+				}
 				if j := i + 1; j < len(t.elements) {
 					next := t.elements[j]
 					period = next.When.Add(s).Truncate(s).Sub(curr.Base)
 					p -= period
 				}
 			}
-			if !t.Base.IsZero() {
-				s, e := curr.Range(period)
-				if e.Before(t.Base) {
-					continue
-				}
-				if s.Equal(t.Base) || s.Before(t.Base) {
-					curr.Base = t.Base
-				}
+			if p < 0 {
+				period += p
 			}
 			r, _ := curr.Predict(period, s, saa)
 			r.When = curr.When

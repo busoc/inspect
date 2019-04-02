@@ -201,7 +201,6 @@ func (e Element) Predict(p, s time.Duration, saa Shape) (*Result, error) {
 	if !e.Base.IsZero() {
 		delta := e.Base.Sub(e.When)
 		when = delta.Seconds() / time.Minute.Seconds()
-		// log.Printf("delta between start and base: %s", delta)
 	}
 	for elapsed := time.Duration(0); elapsed < p; elapsed += s {
 		ps, _, err := sgp.SGP4(els, when)
