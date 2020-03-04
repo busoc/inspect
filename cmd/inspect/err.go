@@ -5,7 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/busoc/celest"
+	"github.com/busoc/inspect"
 )
 
 const (

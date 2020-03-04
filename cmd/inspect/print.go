@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/busoc/celest"
+	"github.com/busoc/inspect"
 )
 
 type meta struct {

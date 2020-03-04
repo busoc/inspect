@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/busoc/celest"
+	"github.com/busoc/inspect"
 )
 
 var SAA = rect{

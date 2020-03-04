@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/busoc/celest"
+	"github.com/busoc/inspect"
 )
 
 func Handle(s Settings) http.Handler {
