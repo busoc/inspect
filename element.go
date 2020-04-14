@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/busoc/celest/coord"
-	"github.com/busoc/celest/sgp"
+	"github.com/busoc/inspect/coord"
+	"github.com/busoc/inspect/sgp"
 )
 
 const (

@@ -70,16 +70,18 @@ type Settings struct {
 }
 
 func (s *Settings) Update(f string) error {
-	r, err := os.Open(f)
-	if err != nil {
-		return checkError(err, nil)
-	}
-	defer r.Close()
-
-	if err := toml.NewDecoder(r).Decode(s); err != nil {
-		return badUsage("invalid configuration file")
-	}
-	return nil
+	err := toml.DecodeFile(f, s)
+	return checkError(err, nil)
+	// r, err := os.Open(f)
+	// if err != nil {
+	// 	return checkError(err, nil)
+	// }
+	// defer r.Close()
+	//
+	// if err := toml.NewDecoder(r).Decode(s); err != nil {
+	// 	return badUsage("invalid configuration file")
+	// }
+	// return nil
 }
 
 func main() {
