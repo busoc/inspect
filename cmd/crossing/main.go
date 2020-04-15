@@ -41,10 +41,14 @@ func (p Period) Contains(pt Point) bool {
 }
 
 func (p Period) String() string {
-	if p.Starts.IsZero() && p.Ends.IsZero() {
+	if p.IsZero() {
 		return "crossing time range [,]"
 	}
 	return fmt.Sprintf("crossing time range [%s,%s]", p.Starts.Format(time.RFC3339), p.Ends.Format(time.RFC3339))
+}
+
+func (p Period) IsZero() bool {
+	return p.Starts.IsZero() && p.Ends.IsZero()
 }
 
 type Square struct {
@@ -116,6 +120,7 @@ func (f Filter) Contains(pt Point) bool {
 
 func main() {
 	var (
+		// list   = flag.Bool("list", false, "list")
 		lat    = flag.Float64("lat", 0, "latitude")
 		lng    = flag.Float64("lng", 0, "longitude")
 		mgn    = flag.Float64("margin", 10, "margin")
@@ -135,13 +140,16 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	fmt.Fprintln(os.Stderr, pd.String())
 	fmt.Fprintln(os.Stderr, sq.String())
-	ws := csv.NewWriter(os.Stdout)
 
-	filter := Contains(sq, pd, Eclipse(*night))
+	var (
+		ws     = csv.NewWriter(os.Stdout)
+		filter = Contains(sq, pd, Eclipse(*night))
+		queue  <-chan Point
+	)
 
-	queue, err := ReadPoints()
-	if err != nil {
+	if queue, err = ReadPoints(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
@@ -158,24 +166,33 @@ func main() {
 }
 
 func ReadPoints() (<-chan Point, error) {
-	var r io.Reader
+	var (
+    r io.Reader
+    rs []io.Reader
+  )
 	if flag.NArg() == 0 {
 		r = os.Stdin
 	} else {
-		rs := make([]io.Reader, 0, flag.NArg())
+		rs = make([]io.Reader, 0, flag.NArg())
 		for _, a := range flag.Args() {
 			f, err := os.Open(a)
 			if err != nil {
 				return nil, err
 			}
-			defer f.Close()
 			rs = append(rs, f)
 		}
 		r = io.MultiReader(rs...)
 	}
 	queue := make(chan Point)
 	go func() {
-		defer close(queue)
+		defer func() {
+      close(queue)
+      for _, r := range rs {
+        if c, ok := r.(io.Closer); ok {
+          c.Close()
+        }
+      }
+    }()
 
 		rs := csv.NewReader(r)
 		rs.Comment = '#'
