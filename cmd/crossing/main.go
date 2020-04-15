@@ -120,21 +120,20 @@ func (f Filter) Contains(pt Point) bool {
 	return true
 }
 
+const (
+	Flattening   = 0.003352813178
+	Excentricity = 0.006694385
+	Radius       = 6378.136
+)
+
 type Point struct {
 	When    time.Time
 	Lat     float64
 	Lng     float64
 	Alt     float64
 	Eclipse bool
-
-	Data []string
+  Saa     bool
 }
-
-const (
-	Flattening   = 0.003352813178
-	Excentricity = 0.006694385
-	Radius       = 6378.136
-)
 
 func (p Point) Distance(t Point) float64 {
 	x0, y0, z0 := p.Coordinates()
@@ -146,20 +145,18 @@ func (p Point) Distance(t Point) float64 {
 
 func (p Point) Coordinates() (float64, float64, float64) {
 	var (
-		rad = math.Pi / 180.0
+    rad = math.Pi / 180.0
+    lat = p.Lat * rad
+    lng = p.Lng * rad
 
-		s = math.Pow(math.Sin(p.Lat*rad), 2)
-		n = math.Pow(Radius*(1-Flattening*(2-Flattening)*s), -0.5)
+		s = math.Pow(math.Sin(lat), 2)
+		n = Radius * math.Pow((1-Flattening*(2-Flattening)*s), -0.5)
 
-		x = (n + p.Alt) * math.Cos(p.Lat) * math.Cos(p.Lng)
-		y = (n + p.Alt) * math.Cos(p.Lat) * math.Sin(p.Lng)
-		z = (n*(1-Excentricity) + p.Alt) * math.Sin(p.Lat)
+		x = (n + p.Alt) * math.Cos(lat) * math.Cos(lng)
+		y = (n + p.Alt) * math.Cos(lat) * math.Sin(lng)
+		z = (n*(1-Excentricity) + p.Alt) * math.Sin(lat)
 	)
 	return x, y, z
-}
-
-func (p Point) IsZero() bool {
-	return len(p.Data) == 0 && p.When.IsZero()
 }
 
 func main() {
@@ -249,16 +246,16 @@ func asList(ws *line.Writer, queue <-chan Point, filter Contain) error {
 	for pt := range queue {
 		if filter.Contains(pt) {
 			ws.AppendTime(pt.When, "2006-01-02 15:05:04.00", line.AlignLeft)
-			ws.AppendFloat(pt.Alt, 8, 2, line.AlignRight | line.Float)
-			ws.AppendFloat(pt.Lat, 8, 2, line.AlignRight | line.Float)
-			ws.AppendFloat(pt.Lng, 8, 2, line.AlignRight | line.Float)
+			ws.AppendFloat(pt.Alt, 8, 3, line.AlignRight | line.Float)
+			ws.AppendFloat(pt.Lat, 8, 3, line.AlignRight | line.Float)
+			ws.AppendFloat(pt.Lng, 8, 3, line.AlignRight | line.Float)
 
-      if pt.Data[5] == "1" {
+      if pt.Eclipse {
         ws.AppendString("night", 5, line.AlignRight)
       } else {
         ws.AppendString("day", 5, line.AlignRight)
       }
-      if pt.Data[6] == "1" {
+      if pt.Saa {
         ws.AppendString("saa", 3, line.AlignRight)
       } else {
         ws.AppendString("-", 3, line.AlignRight)
@@ -329,8 +326,7 @@ func readPoints() (<-chan Point, error) {
 			pt.Lat, _ = strconv.ParseFloat(row[3], 64)
 			pt.Lng, _ = strconv.ParseFloat(row[4], 64)
 			pt.Eclipse, _ = strconv.ParseBool(row[5])
-
-			pt.Data = row
+      pt.Saa, _ = strconv.ParseBool(row[6])
 
 			queue <- pt
 		}
