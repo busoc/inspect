@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -58,15 +59,6 @@ type Square struct {
 	South float64
 }
 
-type Point struct {
-	When    time.Time
-	Lat     float64
-	Lng     float64
-	Eclipse bool
-
-	Data []string
-}
-
 func NewSquare(lat, lng, margin float64) (Square, error) {
 	sq := Square{
 		East:  lng - margin,
@@ -118,9 +110,51 @@ func (f Filter) Contains(pt Point) bool {
 	return true
 }
 
+type Point struct {
+	When    time.Time
+	Lat     float64
+	Lng     float64
+	Alt     float64
+	Eclipse bool
+
+	Data []string
+}
+
+const (
+	Flattening   = 0.003352813178
+	Excentricity = 0.006694385
+	Radius       = 6378.136
+)
+
+func (p Point) Distance(t Point) float64 {
+	x0, y0, z0 := p.Coordinates()
+	x1, y1, z1 := t.Coordinates()
+
+	diff := math.Pow(x1-x0, 2) + math.Pow(y1-y0, 2) + math.Pow(z1-z0, 2)
+	return math.Sqrt(diff)
+}
+
+func (p Point) Coordinates() (float64, float64, float64) {
+	var (
+		rad = math.Pi / 180.0
+
+		s = math.Pow(math.Sin(p.Lat*rad), 2)
+		n = math.Pow(Radius*(1-Flattening*(2-Flattening)*s), -0.5)
+
+		x = (n + p.Alt) * math.Cos(p.Lat) * math.Cos(p.Lng)
+		y = (n + p.Alt) * math.Cos(p.Lat) * math.Sin(p.Lng)
+		z = (n*(1-Excentricity) + p.Alt) * math.Sin(p.Lat)
+	)
+	return x, y, z
+}
+
+func (p Point) IsZero() bool {
+	return len(p.Data) == 0 && p.When.IsZero()
+}
+
 func main() {
 	var (
-		// list   = flag.Bool("list", false, "list")
+		list   = flag.Bool("list", false, "list")
 		lat    = flag.Float64("lat", 0, "latitude")
 		lng    = flag.Float64("lng", 0, "longitude")
 		mgn    = flag.Float64("margin", 10, "margin")
@@ -140,36 +174,75 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+
 	fmt.Fprintln(os.Stderr, pd.String())
 	fmt.Fprintln(os.Stderr, sq.String())
 
-	var (
-		ws     = csv.NewWriter(os.Stdout)
-		filter = Contains(sq, pd, Eclipse(*night))
-		queue  <-chan Point
-	)
-
-	if queue, err = ReadPoints(); err != nil {
+	var fn func(<-chan Point, Contain) error
+	if *list {
+		fn = asList
+	} else {
+		fn = asAggr
+	}
+	queue, err := readPoints()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	if err := fn(queue, Contains(sq, pd, Eclipse(*night))); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+}
+
+func asAggr(queue <-chan Point, filter Contain) error {
+	var (
+		ws    = csv.NewWriter(os.Stdout)
+		first Point
+		last  Point
+	)
+	for pt := range queue {
+		if filter.Contains(pt) {
+			for pt := range queue {
+				if !filter.Contains(pt) {
+					last = pt
+					break
+				}
+			}
+			data := []string{
+				first.Data[0],
+				first.Data[3],
+				first.Data[4],
+				last.Data[0],
+				last.Data[3],
+				last.Data[4],
+				last.When.Sub(first.When).String(),
+				strconv.FormatFloat(last.Distance(first), 'f', -1, 64),
+			}
+			ws.Write(data)
+		}
+		first = pt
+	}
+	ws.Flush()
+	return ws.Error()
+}
+
+func asList(queue <-chan Point, filter Contain) error {
+	ws := csv.NewWriter(os.Stdout)
 	for pt := range queue {
 		if filter.Contains(pt) {
 			ws.Write(pt.Data)
 		}
 	}
 	ws.Flush()
-	if err := ws.Error(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return ws.Error()
 }
 
-func ReadPoints() (<-chan Point, error) {
+func readPoints() (<-chan Point, error) {
 	var (
-    r io.Reader
-    rs []io.Reader
-  )
+		r  io.Reader
+		rs []io.Reader
+	)
 	if flag.NArg() == 0 {
 		r = os.Stdin
 	} else {
@@ -186,13 +259,13 @@ func ReadPoints() (<-chan Point, error) {
 	queue := make(chan Point)
 	go func() {
 		defer func() {
-      close(queue)
-      for _, r := range rs {
-        if c, ok := r.(io.Closer); ok {
-          c.Close()
-        }
-      }
-    }()
+			close(queue)
+			for _, r := range rs {
+				if c, ok := r.(io.Closer); ok {
+					c.Close()
+				}
+			}
+		}()
 
 		rs := csv.NewReader(r)
 		rs.Comment = '#'
@@ -205,6 +278,7 @@ func ReadPoints() (<-chan Point, error) {
 			}
 			var pt Point
 			pt.When, _ = time.Parse("2006-01-02T15:04:05.000000", row[0])
+      pt.Alt, _ = strconv.ParseFloat(row[2], 64)
 			pt.Lat, _ = strconv.ParseFloat(row[3], 64)
 			pt.Lng, _ = strconv.ParseFloat(row[4], 64)
 			pt.Eclipse, _ = strconv.ParseBool(row[5])
