@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	line "github.com/midbel/linewriter"
 )
 
 type Contain interface {
@@ -80,7 +82,7 @@ func (s Square) Contains(pt Point) bool {
 }
 
 func (s Square) String() string {
-	return fmt.Sprintf("crossing area: [%.3fS,%.3fN]x[%.3fE,%.3fW]", s.South, s.North, s.East, s.West)
+	return fmt.Sprintf("crossing area: [%.3fS,%.3fN]x[%.3fW,%.3fE]", s.South, s.North, s.West, s.East)
 }
 
 type Eclipse bool
@@ -88,6 +90,14 @@ type Eclipse bool
 func (e Eclipse) Contains(pt Point) bool {
 	ok := bool(e)
 	return !ok || pt.Eclipse
+}
+
+func (e Eclipse) String() string {
+  ok := bool(e)
+  if ok {
+    return "crossing night only passes"
+  }
+  return "crossing day and night passes"
 }
 
 func Contains(cs ...Contain) Contain {
@@ -154,6 +164,7 @@ func (p Point) IsZero() bool {
 
 func main() {
 	var (
+		comma  = flag.Bool("csv", false, "csv")
 		list   = flag.Bool("list", false, "list")
 		lat    = flag.Float64("lat", 0, "latitude")
 		lng    = flag.Float64("lng", 0, "longitude")
@@ -174,11 +185,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+  ec := Eclipse(*night)
 
 	fmt.Fprintln(os.Stderr, pd.String())
 	fmt.Fprintln(os.Stderr, sq.String())
+  fmt.Fprintln(os.Stderr, ec.String())
 
-	var fn func(<-chan Point, Contain) error
+	var fn func(*line.Writer, <-chan Point, Contain) error
 	if *list {
 		fn = asList
 	} else {
@@ -189,53 +202,87 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	if err := fn(queue, Contains(sq, pd, Eclipse(*night))); err != nil {
+	ws := Line(*comma)
+	if err := fn(ws, queue, Contains(sq, pd, ec)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
-func asAggr(queue <-chan Point, filter Contain) error {
+func asAggr(ws *line.Writer, queue <-chan Point, filter Contain) error {
 	var (
-		ws    = csv.NewWriter(os.Stdout)
 		first Point
 		last  Point
 	)
 	for pt := range queue {
 		if filter.Contains(pt) {
+			first = pt
 			for pt := range queue {
 				if !filter.Contains(pt) {
-					last = pt
 					break
 				}
+				last = pt
 			}
-			data := []string{
-				first.Data[0],
-				first.Data[3],
-				first.Data[4],
-				last.Data[0],
-				last.Data[3],
-				last.Data[4],
-				last.When.Sub(first.When).String(),
-				strconv.FormatFloat(last.Distance(first), 'f', -1, 64),
-			}
-			ws.Write(data)
+
+      var (
+        delta = last.When.Sub(first.When)
+        dist = last.Distance(first)
+      )
+
+      for _, p := range []Point{first, last} {
+        ws.AppendTime(p.When, "2006-01-02T15:04:05.00", line.AlignLeft)
+        ws.AppendFloat(p.Lat, 8, 3, line.AlignRight | line.Float)
+        ws.AppendFloat(p.Lng, 8, 3, line.AlignRight | line.Float)
+      }
+      ws.AppendDuration(delta, 8, line.AlignRight | line.Second)
+      ws.AppendFloat(dist, 8, 1, line.AlignRight | line.Float)
+
+      if _, err := io.Copy(os.Stdout, ws); err != nil && err != io.EOF {
+        return err
+      }
 		}
-		first = pt
 	}
-	ws.Flush()
-	return ws.Error()
+	return nil
 }
 
-func asList(queue <-chan Point, filter Contain) error {
-	ws := csv.NewWriter(os.Stdout)
+func asList(ws *line.Writer, queue <-chan Point, filter Contain) error {
 	for pt := range queue {
 		if filter.Contains(pt) {
-			ws.Write(pt.Data)
+			ws.AppendTime(pt.When, "2006-01-02 15:05:04.00", line.AlignLeft)
+			ws.AppendFloat(pt.Alt, 8, 2, line.AlignRight | line.Float)
+			ws.AppendFloat(pt.Lat, 8, 2, line.AlignRight | line.Float)
+			ws.AppendFloat(pt.Lng, 8, 2, line.AlignRight | line.Float)
+
+      if pt.Data[5] == "1" {
+        ws.AppendString("night", 5, line.AlignRight)
+      } else {
+        ws.AppendString("day", 5, line.AlignRight)
+      }
+      if pt.Data[6] == "1" {
+        ws.AppendString("saa", 3, line.AlignRight)
+      } else {
+        ws.AppendString("-", 3, line.AlignRight)
+      }
+
+			if _, err := io.Copy(os.Stdout, ws); err != nil && err != io.EOF {
+				return err
+			}
 		}
 	}
-	ws.Flush()
-	return ws.Error()
+	return nil
+}
+
+func Line(comma bool) *line.Writer {
+	var opts []line.Option
+	if comma {
+		opts = append(opts, line.AsCSV(true))
+	} else {
+		opts = []line.Option{
+			line.WithPadding([]byte(" ")),
+			line.WithSeparator([]byte("|")),
+		}
+	}
+	return line.NewWriter(8192, opts...)
 }
 
 func readPoints() (<-chan Point, error) {
@@ -278,7 +325,7 @@ func readPoints() (<-chan Point, error) {
 			}
 			var pt Point
 			pt.When, _ = time.Parse("2006-01-02T15:04:05.000000", row[0])
-      pt.Alt, _ = strconv.ParseFloat(row[2], 64)
+			pt.Alt, _ = strconv.ParseFloat(row[2], 64)
 			pt.Lat, _ = strconv.ParseFloat(row[3], 64)
 			pt.Lng, _ = strconv.ParseFloat(row[4], 64)
 			pt.Eclipse, _ = strconv.ParseBool(row[5])
