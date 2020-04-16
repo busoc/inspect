@@ -28,9 +28,7 @@ type filter struct {
 func NewFilter(label string, cs ...Accepter) Accepter {
 	vs := make([]Accepter, len(cs))
 	copy(vs, cs)
-	if label == "" {
-		label = "default"
-	}
+
 	f := filter{
 		label: label,
 		as:    vs,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+  "time"
 
 	"github.com/midbel/linewriter"
 )
@@ -20,7 +21,8 @@ func main() {
 		starts = flag.String("starts", "", "start time")
 		ends   = flag.String("ends", "", "end time")
 		config = flag.Bool("config", false, "use config file")
-		label  = flag.String("label", "default", "label")
+		label  = flag.String("label", "", "label")
+    cross  = flag.Duration("duration", 0, "duration")
 	)
 	flag.Parse()
 
@@ -63,7 +65,7 @@ func main() {
 		files = flag.Args()
 	}
 
-	var iter func(*linewriter.Writer, <-chan Point, Accepter) error
+	var iter func(*linewriter.Writer, <-chan Point, time.Duration, Accepter) error
 	if *list {
 		iter = asList
 	} else {
@@ -74,14 +76,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	ws := Line(*comma)
-	if err := iter(ws, queue, accept); err != nil {
+	if err := iter(Line(*comma), queue, *cross, accept); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
-func asAggr(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
+func asAggr(ws *linewriter.Writer, queue <-chan Point, rng time.Duration, accept Accepter) error {
 	var (
 		first Point
 		last  Point
@@ -100,7 +101,12 @@ func asAggr(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
 				delta = last.When.Sub(first.When)
 				dist  = last.Distance(first)
 			)
-			ws.AppendString(label, 12, linewriter.AlignLeft)
+      if rng > 0 && delta < rng {
+        continue
+      }
+      if label != "" {
+        ws.AppendString(label, 12, linewriter.AlignLeft)
+      }
 			for _, p := range []Point{first, last} {
 				ws.AppendTime(p.When, "2006-01-02T15:04:05.00", linewriter.AlignLeft)
 				ws.AppendFloat(p.Lat, 8, 3, linewriter.AlignRight|linewriter.Float)
@@ -117,10 +123,12 @@ func asAggr(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
 	return nil
 }
 
-func asList(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
+func asList(ws *linewriter.Writer, queue <-chan Point, _ time.Duration, accept Accepter) error {
 	for pt := range queue {
 		if ok, label := accept.Accept(pt); ok {
-			ws.AppendString(label, 12, linewriter.AlignLeft)
+      if label != "" {
+        ws.AppendString(label, 12, linewriter.AlignLeft)
+      }
 			ws.AppendTime(pt.When, "2006-01-02 15:05:04.00", linewriter.AlignLeft)
 			ws.AppendFloat(pt.Alt, 8, 3, linewriter.AlignRight|linewriter.Float)
 			ws.AppendFloat(pt.Lat, 8, 3, linewriter.AlignRight|linewriter.Float)
