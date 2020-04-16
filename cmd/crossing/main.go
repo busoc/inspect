@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-  "time"
 
 	"github.com/midbel/linewriter"
 )
@@ -22,7 +21,6 @@ func main() {
 		ends   = flag.String("ends", "", "end time")
 		config = flag.Bool("config", false, "use config file")
 		label  = flag.String("label", "", "label")
-    cross  = flag.Duration("duration", 0, "duration")
 	)
 	flag.Parse()
 
@@ -65,7 +63,7 @@ func main() {
 		files = flag.Args()
 	}
 
-	var iter func(*linewriter.Writer, <-chan Point, time.Duration, Accepter) error
+	var iter func(*linewriter.Writer, <-chan Point, Accepter) error
 	if *list {
 		iter = asList
 	} else {
@@ -76,13 +74,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	if err := iter(Line(*comma), queue, *cross, accept); err != nil {
+	if err := iter(Line(*comma), queue, accept); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
-func asAggr(ws *linewriter.Writer, queue <-chan Point, rng time.Duration, accept Accepter) error {
+func asAggr(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
 	var (
 		first Point
 		last  Point
@@ -101,9 +99,6 @@ func asAggr(ws *linewriter.Writer, queue <-chan Point, rng time.Duration, accept
 				delta = last.When.Sub(first.When)
 				dist  = last.Distance(first)
 			)
-      if rng > 0 && delta < rng {
-        continue
-      }
       if label != "" {
         ws.AppendString(label, 12, linewriter.AlignLeft)
       }
@@ -123,7 +118,7 @@ func asAggr(ws *linewriter.Writer, queue <-chan Point, rng time.Duration, accept
 	return nil
 }
 
-func asList(ws *linewriter.Writer, queue <-chan Point, _ time.Duration, accept Accepter) error {
+func asList(ws *linewriter.Writer, queue <-chan Point, accept Accepter) error {
 	for pt := range queue {
 		if ok, label := accept.Accept(pt); ok {
       if label != "" {
