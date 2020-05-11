@@ -44,14 +44,22 @@ type Setting struct {
 	Areas []Area `toml:"area"`
 }
 
-func (s Setting) Accept() (Accepter, error) {
-	cs := make(multiaccepter, 0, len(s.Areas))
+func (s Setting) Paths() ([]Path, error) {
+	var (
+		paths []Path
+		files = []string{s.File}
+	)
 	for _, a := range s.Areas {
-		c, err := a.Accept()
+		accept, err := a.Accept()
 		if err != nil {
 			return nil, err
 		}
-		cs = append(cs, c)
+		ps, err := ReadPaths(files, accept)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, ps...)
 	}
-	return cs, nil
+	// sort.Slice(paths)
+	return paths, nil
 }

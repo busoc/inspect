@@ -60,6 +60,54 @@ func ReadPoints(files []string) (<-chan Point, error) {
 	return queue, nil
 }
 
+type Path struct {
+	Label string
+	First Point
+	Last  Point
+}
+
+func (p Path) Distance() float64 {
+	return p.Last.Distance(p.First)
+}
+
+func (p Path) Delta() time.Duration {
+	return p.Last.When.Sub(p.First.When)
+}
+
+func (p Path) Less(other Path) bool {
+	return p.First.Less(other.First)
+}
+
+func ReadPaths(files []string, accept Accepter) ([]Path, error) {
+	queue, err := ReadPoints(files)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		first Point
+		last  Point
+		paths []Path
+	)
+	for pt := range queue {
+		if ok, label := accept.Accept(pt); ok {
+			first, last = pt, pt
+			for pt := range queue {
+				if ok, _ := accept.Accept(pt); !ok {
+					break
+				}
+				last = pt
+			}
+			p := Path{
+				Label: label,
+				First: first,
+				Last: last,
+			}
+			paths = append(paths, p)
+		}
+	}
+	return paths, nil
+}
+
 type Point struct {
 	When    time.Time
 	Lat     float64
@@ -104,4 +152,8 @@ func (p Point) Coordinates() (float64, float64, float64) {
 		z = (n*(1-Excentricity) + p.Alt) * math.Sin(lat)
 	)
 	return x, y, z
+}
+
+func (p Point) Less(other Point) bool {
+	return p.When.Before(other.When)
 }

@@ -9,17 +9,6 @@ type Accepter interface {
 	Accept(Point) (bool, string)
 }
 
-type multiaccepter []Accepter
-
-func (as multiaccepter) Accept(pt Point) (bool, string) {
-	for _, a := range as {
-		if ok, str := a.Accept(pt); ok {
-			return ok, str
-		}
-	}
-	return false, ""
-}
-
 type filter struct {
 	label string
 	as    []Accepter
