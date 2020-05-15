@@ -8,8 +8,15 @@ Name "${NAME} installer v${VERSION}"
 OutFile "${NAME}-setup.exe"
 InstallDir $PROGRAMFILES\${NAME}
 
+BrandingText "${NAME} version ${VERSION}"
+
+SetCompressor /SOLID lzma
+
 ShowInstDetails show
 ShowUnInstDetails show
+
+SetDateSave off
+SetOverwrite on
 
 Page directory
 Page instfiles
