@@ -40,7 +40,9 @@ options:
   help            print this help message and exit
 
 usages:
+<pre>
 $ crosspath [-starts] [-ends] [-margin] [-label] [-lat] [-lng] [-night] [-csv] <trajectory...>
 $ crosspath -config <config.toml>
 $ crosspath -version
 $ crosspath -help
+</pre>
