@@ -1,4 +1,4 @@
-!define VERSION 0.1.1
+!define VERSION 0.2.0
 !define NAME crosspath
 !define ENTRY Software\${NAME}
 !define REPO "https://github.com/busoc/inspect"
